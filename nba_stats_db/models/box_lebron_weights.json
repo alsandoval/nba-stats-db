@@ -1,0 +1,59 @@
+{
+  "model_type": "RIDGE Regression (CV=3)",
+  "trained_at": "2026-09-20T22:33:55.982309",
+  "sample_size": 9752,
+  "train_samples": 7801,
+  "test_samples": 1951,
+  "offensive_metrics": {
+    "r2": 0.2162,
+    "rmse": 1.2668,
+    "mae": 0.9674,
+    "best_alpha": 100.0
+  },
+  "defensive_metrics": {
+    "r2": 0.0908,
+    "rmse": 0.8349,
+    "mae": 0.6312,
+    "best_alpha": 50.0
+  },
+  "offensive_weights": {
+    "usg_pct": 5.344574044973982,
+    "ts_pct_diff": 3.7634692843694384,
+    "usg_ts_interaction": 26.537531401589966,
+    "ast_pct": 1.3653640320848164,
+    "tm_tov_pct": -8.060515100160721,
+    "ast_tov_diff": 1.9760714622468485,
+    "oreb_pct": 6.108033201242121,
+    "fg3a_rate": -0.18866548003725156,
+    "fg3_pct_diff": 0.1747065615751561
+  },
+  "defensive_weights": {
+    "dreb_pct": -0.9919474026907154,
+    "stl_per_36": 0.3441619208798801,
+    "blk_per_36": 0.16403042604138113,
+    "pf_per_36": 0.1863761531299241,
+    "rim_defense_diff": 0.0,
+    "deflections_per_100": 0.0
+  },
+  "offensive_weights_standardized": {
+    "usg_pct": 0.26618082506712926,
+    "ts_pct_diff": 0.19600208977549993,
+    "usg_ts_interaction": 0.25635935316656033,
+    "ast_pct": 0.12396294042040411,
+    "tm_tov_pct": -0.22677577836631127,
+    "ast_tov_diff": 0.18667560926563292,
+    "oreb_pct": 0.20319266526307908,
+    "fg3a_rate": -0.040054860051601554,
+    "fg3_pct_diff": 0.02644916910615247
+  },
+  "defensive_weights_standardized": {
+    "dreb_pct": -0.050859111894660455,
+    "stl_per_36": 0.1466617577840758,
+    "blk_per_36": 0.1150727042716428,
+    "pf_per_36": 0.1991379902076483,
+    "rim_defense_diff": 0.0,
+    "deflections_per_100": 0.0
+  },
+  "offensive_intercept": -1.5672,
+  "defensive_intercept": -0.4942
+}

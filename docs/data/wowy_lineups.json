@@ -1,0 +1,3905 @@
+{
+  "season": "2023-24",
+  "teams": {
+    "1610612738": {
+      "team_id": 1610612738,
+      "team_name": "Boston Celtics",
+      "abbreviation": "BOS",
+      "base_off_rating": 122.2,
+      "base_def_rating": 110.6,
+      "base_net_rating": 11.7,
+      "roster": [
+        {
+          "player_id": 1718,
+          "full_name": "Paul Pierce",
+          "avg_min": 37.0,
+          "bit_index": 0
+        },
+        {
+          "player_id": 76970,
+          "full_name": "John Havlicek",
+          "avg_min": 31.2,
+          "bit_index": 1
+        },
+        {
+          "player_id": 1449,
+          "full_name": "Larry Bird",
+          "avg_min": 38.9,
+          "bit_index": 2
+        },
+        {
+          "player_id": 305,
+          "full_name": "Robert Parish",
+          "avg_min": 32.0,
+          "bit_index": 3
+        },
+        {
+          "player_id": 1450,
+          "full_name": "Kevin McHale",
+          "avg_min": 31.4,
+          "bit_index": 4
+        },
+        {
+          "player_id": 78049,
+          "full_name": "Bill Russell",
+          "avg_min": 29.3,
+          "bit_index": 5
+        },
+        {
+          "player_id": 76462,
+          "full_name": "Dave Cowens",
+          "avg_min": 38.4,
+          "bit_index": 6
+        },
+        {
+          "player_id": 78510,
+          "full_name": "Jojo White",
+          "avg_min": 36.5,
+          "bit_index": 7
+        },
+        {
+          "player_id": 1628369,
+          "full_name": "Jayson Tatum",
+          "avg_min": 35.2,
+          "bit_index": 8
+        },
+        {
+          "player_id": 952,
+          "full_name": "Antoine Walker",
+          "avg_min": 39.4,
+          "bit_index": 9
+        },
+        {
+          "player_id": 1627759,
+          "full_name": "Jaylen Brown",
+          "avg_min": 31.1,
+          "bit_index": 10
+        },
+        {
+          "player_id": 77141,
+          "full_name": "Dennis Johnson",
+          "avg_min": 34.7,
+          "bit_index": 11
+        },
+        {
+          "player_id": 77487,
+          "full_name": "Cedric Maxwell",
+          "avg_min": 30.3,
+          "bit_index": 12
+        },
+        {
+          "player_id": 203935,
+          "full_name": "Marcus Smart",
+          "avg_min": 30.5,
+          "bit_index": 13
+        },
+        {
+          "player_id": 200765,
+          "full_name": "Rajon Rondo",
+          "avg_min": 33.7,
+          "bit_index": 14
+        },
+        {
+          "player_id": 76017,
+          "full_name": "Danny Ainge",
+          "avg_min": 28.3,
+          "bit_index": 15
+        },
+        {
+          "player_id": 77700,
+          "full_name": "Don Nelson",
+          "avg_min": 18.5,
+          "bit_index": 16
+        },
+        {
+          "player_id": 77196,
+          "full_name": "Sam Jones",
+          "avg_min": 17.6,
+          "bit_index": 17
+        },
+        {
+          "player_id": 201143,
+          "full_name": "Al Horford",
+          "avg_min": 30.3,
+          "bit_index": 18
+        },
+        {
+          "player_id": 600003,
+          "full_name": "Bob Cousy",
+          "avg_min": 16.7,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612760": {
+      "team_id": 1610612760,
+      "team_name": "Seattle SuperSonics",
+      "abbreviation": "SEA",
+      "base_off_rating": 118.3,
+      "base_def_rating": 111.0,
+      "base_net_rating": 7.3,
+      "roster": [
+        {
+          "player_id": 56,
+          "full_name": "Gary Payton",
+          "avg_min": 37.0,
+          "bit_index": 0
+        },
+        {
+          "player_id": 201566,
+          "full_name": "Russell Westbrook",
+          "avg_min": 34.9,
+          "bit_index": 1
+        },
+        {
+          "player_id": 201142,
+          "full_name": "Kevin Durant",
+          "avg_min": 38.3,
+          "bit_index": 2
+        },
+        {
+          "player_id": 78149,
+          "full_name": "Jack Sikma",
+          "avg_min": 34.7,
+          "bit_index": 3
+        },
+        {
+          "player_id": 76272,
+          "full_name": "Fred Brown",
+          "avg_min": 25.2,
+          "bit_index": 4
+        },
+        {
+          "player_id": 203,
+          "full_name": "Nate McMillan",
+          "avg_min": 25.3,
+          "bit_index": 5
+        },
+        {
+          "player_id": 1740,
+          "full_name": "Rashard Lewis",
+          "avg_min": 33.9,
+          "bit_index": 6
+        },
+        {
+          "player_id": 431,
+          "full_name": "Shawn Kemp",
+          "avg_min": 30.4,
+          "bit_index": 7
+        },
+        {
+          "player_id": 2555,
+          "full_name": "Nick Collison",
+          "avg_min": 20.1,
+          "bit_index": 8
+        },
+        {
+          "player_id": 78549,
+          "full_name": "Gus Williams",
+          "avg_min": 34.4,
+          "bit_index": 9
+        },
+        {
+          "player_id": 201586,
+          "full_name": "Serge Ibaka",
+          "avg_min": 29.1,
+          "bit_index": 10
+        },
+        {
+          "player_id": 96,
+          "full_name": "Detlef Schrempf",
+          "avg_min": 35.2,
+          "bit_index": 11
+        },
+        {
+          "player_id": 107,
+          "full_name": "Dale Ellis",
+          "avg_min": 33.3,
+          "bit_index": 12
+        },
+        {
+          "player_id": 203500,
+          "full_name": "Steven Adams",
+          "avg_min": 26.9,
+          "bit_index": 13
+        },
+        {
+          "player_id": 365,
+          "full_name": "Derrick McKey",
+          "avg_min": 31.4,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1365,
+          "full_name": "Xavier McDaniel",
+          "avg_min": 34.0,
+          "bit_index": 15
+        },
+        {
+          "player_id": 262,
+          "full_name": "Michael Cage",
+          "avg_min": 27.1,
+          "bit_index": 16
+        },
+        {
+          "player_id": 1472,
+          "full_name": "Tom Chambers",
+          "avg_min": 33.7,
+          "bit_index": 17
+        },
+        {
+          "player_id": 78213,
+          "full_name": "Dick Snyder",
+          "avg_min": 30.6,
+          "bit_index": 18
+        },
+        {
+          "player_id": 1628983,
+          "full_name": "Shai Gilgeous-Alexander",
+          "avg_min": 34.8,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612743": {
+      "team_id": 1610612743,
+      "team_name": "Denver Nuggets",
+      "abbreviation": "DEN",
+      "base_off_rating": 117.8,
+      "base_def_rating": 112.3,
+      "base_net_rating": 5.5,
+      "roster": [
+        {
+          "player_id": 76673,
+          "full_name": "Alex English",
+          "avg_min": 35.8,
+          "bit_index": 0
+        },
+        {
+          "player_id": 203999,
+          "full_name": "Nikola Joki\u0107",
+          "avg_min": 32.3,
+          "bit_index": 1
+        },
+        {
+          "player_id": 77097,
+          "full_name": "Dan Issel",
+          "avg_min": 31.1,
+          "bit_index": 2
+        },
+        {
+          "player_id": 2546,
+          "full_name": "Carmelo Anthony",
+          "avg_min": 36.5,
+          "bit_index": 3
+        },
+        {
+          "player_id": 76618,
+          "full_name": "T.R. Dunn",
+          "avg_min": 25.0,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1627750,
+          "full_name": "Jamal Murray",
+          "avg_min": 32.2,
+          "bit_index": 5
+        },
+        {
+          "player_id": 77376,
+          "full_name": "Lafayette Lever",
+          "avg_min": 35.5,
+          "bit_index": 6
+        },
+        {
+          "player_id": 2403,
+          "full_name": "Nene",
+          "avg_min": 29.6,
+          "bit_index": 7
+        },
+        {
+          "player_id": 203115,
+          "full_name": "Will Barton",
+          "avg_min": 30.2,
+          "bit_index": 8
+        },
+        {
+          "player_id": 87,
+          "full_name": "Dikembe Mutombo",
+          "avg_min": 37.0,
+          "bit_index": 9
+        },
+        {
+          "player_id": 1889,
+          "full_name": "Andre Miller",
+          "avg_min": 31.3,
+          "bit_index": 10
+        },
+        {
+          "player_id": 78326,
+          "full_name": "David Thompson",
+          "avg_min": 33.3,
+          "bit_index": 11
+        },
+        {
+          "player_id": 179,
+          "full_name": "Bryant Stith",
+          "avg_min": 29.1,
+          "bit_index": 12
+        },
+        {
+          "player_id": 201951,
+          "full_name": "Ty Lawson",
+          "avg_min": 31.2,
+          "bit_index": 13
+        },
+        {
+          "player_id": 76944,
+          "full_name": "Bill Hanzlik",
+          "avg_min": 20.7,
+          "bit_index": 14
+        },
+        {
+          "player_id": 199,
+          "full_name": "Reggie Williams",
+          "avg_min": 30.1,
+          "bit_index": 15
+        },
+        {
+          "player_id": 51,
+          "full_name": "Mahmoud Abdul-Rauf",
+          "avg_min": 28.4,
+          "bit_index": 16
+        },
+        {
+          "player_id": 948,
+          "full_name": "Marcus Camby",
+          "avg_min": 31.9,
+          "bit_index": 17
+        },
+        {
+          "player_id": 2030,
+          "full_name": "Kenyon Martin",
+          "avg_min": 30.7,
+          "bit_index": 18
+        },
+        {
+          "player_id": 686,
+          "full_name": "Antonio McDyess",
+          "avg_min": 34.0,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612750": {
+      "team_id": 1610612750,
+      "team_name": "Minnesota Timberwolves",
+      "abbreviation": "MIN",
+      "base_off_rating": 114.6,
+      "base_def_rating": 108.4,
+      "base_net_rating": 6.3,
+      "roster": [
+        {
+          "player_id": 708,
+          "full_name": "Kevin Garnett",
+          "avg_min": 37.5,
+          "bit_index": 0
+        },
+        {
+          "player_id": 1626157,
+          "full_name": "Karl-Anthony Towns",
+          "avg_min": 34.0,
+          "bit_index": 1
+        },
+        {
+          "player_id": 417,
+          "full_name": "Sam Mitchell",
+          "avg_min": 24.2,
+          "bit_index": 2
+        },
+        {
+          "player_id": 203952,
+          "full_name": "Andrew Wiggins",
+          "avg_min": 35.8,
+          "bit_index": 3
+        },
+        {
+          "player_id": 28,
+          "full_name": "Doug West",
+          "avg_min": 25.6,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1887,
+          "full_name": "Wally Szczerbiak",
+          "avg_min": 33.5,
+          "bit_index": 5
+        },
+        {
+          "player_id": 1630162,
+          "full_name": "Anthony Edwards",
+          "avg_min": 35.1,
+          "bit_index": 6
+        },
+        {
+          "player_id": 201937,
+          "full_name": "Ricky Rubio",
+          "avg_min": 30.8,
+          "bit_index": 7
+        },
+        {
+          "player_id": 201567,
+          "full_name": "Kevin Love",
+          "avg_min": 32.8,
+          "bit_index": 8
+        },
+        {
+          "player_id": 1630183,
+          "full_name": "Jaden McDaniels",
+          "avg_min": 28.7,
+          "bit_index": 9
+        },
+        {
+          "player_id": 203476,
+          "full_name": "Gorgui Dieng",
+          "avg_min": 22.1,
+          "bit_index": 10
+        },
+        {
+          "player_id": 324,
+          "full_name": "Anthony Peeler",
+          "avg_min": 27.4,
+          "bit_index": 11
+        },
+        {
+          "player_id": 363,
+          "full_name": "Christian Laettner",
+          "avg_min": 34.6,
+          "bit_index": 12
+        },
+        {
+          "player_id": 2239,
+          "full_name": "Trenton Hassell",
+          "avg_min": 28.5,
+          "bit_index": 13
+        },
+        {
+          "player_id": 201147,
+          "full_name": "Corey Brewer",
+          "avg_min": 27.5,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1629675,
+          "full_name": "Naz Reid",
+          "avg_min": 20.8,
+          "bit_index": 15
+        },
+        {
+          "player_id": 339,
+          "full_name": "Tom Gugliotta",
+          "avg_min": 37.1,
+          "bit_index": 16
+        },
+        {
+          "player_id": 71,
+          "full_name": "Pooh Richardson",
+          "avg_min": 35.2,
+          "bit_index": 17
+        },
+        {
+          "player_id": 76338,
+          "full_name": "Tony Campbell",
+          "avg_min": 35.9,
+          "bit_index": 18
+        },
+        {
+          "player_id": 1725,
+          "full_name": "Rasho Nesterovic",
+          "avg_min": 23.9,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612746": {
+      "team_id": 1610612746,
+      "team_name": "Buffalo Braves",
+      "abbreviation": "BUF",
+      "base_off_rating": 117.9,
+      "base_def_rating": 114.6,
+      "base_net_rating": 3.4,
+      "roster": [
+        {
+          "player_id": 201599,
+          "full_name": "DeAndre Jordan",
+          "avg_min": 28.3,
+          "bit_index": 0
+        },
+        {
+          "player_id": 78200,
+          "full_name": "Randy Smith",
+          "avg_min": 27.8,
+          "bit_index": 1
+        },
+        {
+          "player_id": 201933,
+          "full_name": "Blake Griffin",
+          "avg_min": 35.2,
+          "bit_index": 2
+        },
+        {
+          "player_id": 1882,
+          "full_name": "Elton Brand",
+          "avg_min": 38.4,
+          "bit_index": 3
+        },
+        {
+          "player_id": 1894,
+          "full_name": "Corey Maggette",
+          "avg_min": 30.7,
+          "bit_index": 4
+        },
+        {
+          "player_id": 101108,
+          "full_name": "Chris Paul",
+          "avg_min": 34.3,
+          "bit_index": 5
+        },
+        {
+          "player_id": 2549,
+          "full_name": "Chris Kaman",
+          "avg_min": 29.7,
+          "bit_index": 6
+        },
+        {
+          "player_id": 80,
+          "full_name": "Ken Norman",
+          "avg_min": 31.0,
+          "bit_index": 7
+        },
+        {
+          "player_id": 330,
+          "full_name": "Danny Manning",
+          "avg_min": 34.0,
+          "bit_index": 8
+        },
+        {
+          "player_id": 1627826,
+          "full_name": "Ivica Zubac",
+          "avg_min": 25.0,
+          "bit_index": 9
+        },
+        {
+          "player_id": 104,
+          "full_name": "Benoit Benjamin",
+          "avg_min": 31.3,
+          "bit_index": 10
+        },
+        {
+          "player_id": 15,
+          "full_name": "Eric Piatkowski",
+          "avg_min": 20.5,
+          "bit_index": 11
+        },
+        {
+          "player_id": 166,
+          "full_name": "Ron Harper",
+          "avg_min": 37.7,
+          "bit_index": 12
+        },
+        {
+          "player_id": 2037,
+          "full_name": "Jamal Crawford",
+          "avg_min": 27.8,
+          "bit_index": 13
+        },
+        {
+          "player_id": 202,
+          "full_name": "Gary Grant",
+          "avg_min": 25.0,
+          "bit_index": 14
+        },
+        {
+          "player_id": 77689,
+          "full_name": "Swen Nater",
+          "avg_min": 31.3,
+          "bit_index": 15
+        },
+        {
+          "player_id": 77498,
+          "full_name": "Bob McAdoo",
+          "avg_min": 29.3,
+          "bit_index": 16
+        },
+        {
+          "player_id": 202331,
+          "full_name": "Paul George",
+          "avg_min": 34.0,
+          "bit_index": 17
+        },
+        {
+          "player_id": 1885,
+          "full_name": "Lamar Odom",
+          "avg_min": 31.4,
+          "bit_index": 18
+        },
+        {
+          "player_id": 202695,
+          "full_name": "Kawhi Leonard",
+          "avg_min": 33.9,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612752": {
+      "team_id": 1610612752,
+      "team_name": "New York Knicks",
+      "abbreviation": "NYK",
+      "base_off_rating": 117.3,
+      "base_def_rating": 112.4,
+      "base_net_rating": 4.9,
+      "roster": [
+        {
+          "player_id": 121,
+          "full_name": "Patrick Ewing",
+          "avg_min": 36.4,
+          "bit_index": 0
+        },
+        {
+          "player_id": 76750,
+          "full_name": "Walt Frazier",
+          "avg_min": 37.8,
+          "bit_index": 1
+        },
+        {
+          "player_id": 891,
+          "full_name": "Charles Oakley",
+          "avg_min": 33.3,
+          "bit_index": 2
+        },
+        {
+          "player_id": 76233,
+          "full_name": "Bill Bradley",
+          "avg_min": 30.5,
+          "bit_index": 3
+        },
+        {
+          "player_id": 275,
+          "full_name": "Allan Houston",
+          "avg_min": 36.4,
+          "bit_index": 4
+        },
+        {
+          "player_id": 77929,
+          "full_name": "Willis Reed",
+          "avg_min": 28.4,
+          "bit_index": 5
+        },
+        {
+          "player_id": 317,
+          "full_name": "John Starks",
+          "avg_min": 29.2,
+          "bit_index": 6
+        },
+        {
+          "player_id": 600006,
+          "full_name": "Earl Monroe",
+          "avg_min": 29.2,
+          "bit_index": 7
+        },
+        {
+          "player_id": 76545,
+          "full_name": "Dave DeBusschere",
+          "avg_min": 36.1,
+          "bit_index": 8
+        },
+        {
+          "player_id": 786,
+          "full_name": "Gerald Wilkins",
+          "avg_min": 30.7,
+          "bit_index": 9
+        },
+        {
+          "player_id": 76107,
+          "full_name": "Dick Barnett",
+          "avg_min": 27.2,
+          "bit_index": 10
+        },
+        {
+          "player_id": 703,
+          "full_name": "Kurt Thomas",
+          "avg_min": 28.4,
+          "bit_index": 11
+        },
+        {
+          "player_id": 76362,
+          "full_name": "Bill Cartwright",
+          "avg_min": 31.0,
+          "bit_index": 12
+        },
+        {
+          "player_id": 349,
+          "full_name": "Mark Jackson",
+          "avg_min": 30.5,
+          "bit_index": 13
+        },
+        {
+          "player_id": 2546,
+          "full_name": "Carmelo Anthony",
+          "avg_min": 36.2,
+          "bit_index": 14
+        },
+        {
+          "player_id": 84,
+          "full_name": "Latrell Sprewell",
+          "avg_min": 39.2,
+          "bit_index": 15
+        },
+        {
+          "player_id": 78375,
+          "full_name": "Trent Tucker",
+          "avg_min": 21.4,
+          "bit_index": 16
+        },
+        {
+          "player_id": 369,
+          "full_name": "Charlie Ward",
+          "avg_min": 22.9,
+          "bit_index": 17
+        },
+        {
+          "player_id": 193,
+          "full_name": "Anthony Mason",
+          "avg_min": 31.5,
+          "bit_index": 18
+        },
+        {
+          "player_id": 77106,
+          "full_name": "Phil Jackson",
+          "avg_min": 17.5,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612742": {
+      "team_id": 1610612742,
+      "team_name": "Dallas Mavericks",
+      "abbreviation": "DAL",
+      "base_off_rating": 117.0,
+      "base_def_rating": 114.9,
+      "base_net_rating": 2.1,
+      "roster": [
+        {
+          "player_id": 1717,
+          "full_name": "Dirk Nowitzki",
+          "avg_min": 34.3,
+          "bit_index": 0
+        },
+        {
+          "player_id": 76176,
+          "full_name": "Rolando Blackman",
+          "avg_min": 34.6,
+          "bit_index": 1
+        },
+        {
+          "player_id": 157,
+          "full_name": "Derek Harper",
+          "avg_min": 32.1,
+          "bit_index": 2
+        },
+        {
+          "player_id": 714,
+          "full_name": "Michael Finley",
+          "avg_min": 39.9,
+          "bit_index": 3
+        },
+        {
+          "player_id": 1891,
+          "full_name": "Jason Terry",
+          "avg_min": 32.9,
+          "bit_index": 4
+        },
+        {
+          "player_id": 76516,
+          "full_name": "Brad Davis",
+          "avg_min": 24.1,
+          "bit_index": 5
+        },
+        {
+          "player_id": 76016,
+          "full_name": "Mark Aguirre",
+          "avg_min": 33.8,
+          "bit_index": 6
+        },
+        {
+          "player_id": 467,
+          "full_name": "Jason Kidd",
+          "avg_min": 34.8,
+          "bit_index": 7
+        },
+        {
+          "player_id": 64,
+          "full_name": "Sam Perkins",
+          "avg_min": 33.4,
+          "bit_index": 8
+        },
+        {
+          "player_id": 1629029,
+          "full_name": "Luka Don\u010di\u0107",
+          "avg_min": 35.3,
+          "bit_index": 9
+        },
+        {
+          "player_id": 76583,
+          "full_name": "James Donaldson",
+          "avg_min": 32.2,
+          "bit_index": 10
+        },
+        {
+          "player_id": 2572,
+          "full_name": "Josh Howard",
+          "avg_min": 31.8,
+          "bit_index": 11
+        },
+        {
+          "player_id": 959,
+          "full_name": "Steve Nash",
+          "avg_min": 33.2,
+          "bit_index": 12
+        },
+        {
+          "player_id": 2734,
+          "full_name": "Devin Harris",
+          "avg_min": 20.6,
+          "bit_index": 13
+        },
+        {
+          "player_id": 1627827,
+          "full_name": "Dorian Finney-Smith",
+          "avg_min": 28.4,
+          "bit_index": 14
+        },
+        {
+          "player_id": 200826,
+          "full_name": "J.J. Barea",
+          "avg_min": 19.0,
+          "bit_index": 15
+        },
+        {
+          "player_id": 203939,
+          "full_name": "Dwight Powell",
+          "avg_min": 17.4,
+          "bit_index": 16
+        },
+        {
+          "player_id": 762,
+          "full_name": "Shawn Bradley",
+          "avg_min": 20.5,
+          "bit_index": 17
+        },
+        {
+          "player_id": 1890,
+          "full_name": "Shawn Marion",
+          "avg_min": 30.4,
+          "bit_index": 18
+        },
+        {
+          "player_id": 78418,
+          "full_name": "Jay Vincent",
+          "avg_min": 29.6,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612740": {
+      "team_id": 1610612740,
+      "team_name": "New Orleans Hornets",
+      "abbreviation": "NOH",
+      "base_off_rating": 116.5,
+      "base_def_rating": 111.9,
+      "base_net_rating": 4.6,
+      "roster": [
+        {
+          "player_id": 2561,
+          "full_name": "David West",
+          "avg_min": 32.3,
+          "bit_index": 0
+        },
+        {
+          "player_id": 101108,
+          "full_name": "Chris Paul",
+          "avg_min": 37.2,
+          "bit_index": 1
+        },
+        {
+          "player_id": 203076,
+          "full_name": "Anthony Davis",
+          "avg_min": 34.7,
+          "bit_index": 2
+        },
+        {
+          "player_id": 201950,
+          "full_name": "Jrue Holiday",
+          "avg_min": 33.5,
+          "bit_index": 3
+        },
+        {
+          "player_id": 136,
+          "full_name": "P.J. Brown",
+          "avg_min": 33.6,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1627742,
+          "full_name": "Brandon Ingram",
+          "avg_min": 33.9,
+          "bit_index": 5
+        },
+        {
+          "player_id": 203468,
+          "full_name": "CJ McCollum",
+          "avg_min": 33.9,
+          "bit_index": 6
+        },
+        {
+          "player_id": 978,
+          "full_name": "Peja Stojakovic",
+          "avg_min": 33.3,
+          "bit_index": 7
+        },
+        {
+          "player_id": 2446,
+          "full_name": "Rasual Butler",
+          "avg_min": 26.0,
+          "bit_index": 8
+        },
+        {
+          "player_id": 1630529,
+          "full_name": "Herbert Jones",
+          "avg_min": 30.5,
+          "bit_index": 9
+        },
+        {
+          "player_id": 201569,
+          "full_name": "Eric Gordon",
+          "avg_min": 32.4,
+          "bit_index": 10
+        },
+        {
+          "player_id": 2199,
+          "full_name": "Tyson Chandler",
+          "avg_min": 34.0,
+          "bit_index": 11
+        },
+        {
+          "player_id": 202734,
+          "full_name": "E'Twaun Moore",
+          "avg_min": 26.3,
+          "bit_index": 12
+        },
+        {
+          "player_id": 1630530,
+          "full_name": "Trey Murphy III",
+          "avg_min": 27.4,
+          "bit_index": 13
+        },
+        {
+          "player_id": 201583,
+          "full_name": "Ryan Anderson",
+          "avg_min": 30.3,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1629627,
+          "full_name": "Zion Williamson",
+          "avg_min": 31.4,
+          "bit_index": 15
+        },
+        {
+          "player_id": 201967,
+          "full_name": "Dante Cunningham",
+          "avg_min": 24.2,
+          "bit_index": 16
+        },
+        {
+          "player_id": 202685,
+          "full_name": "Jonas Valan\u010di\u016bnas",
+          "avg_min": 26.1,
+          "bit_index": 17
+        },
+        {
+          "player_id": 2048,
+          "full_name": "Jamaal Magloire",
+          "avg_min": 31.8,
+          "bit_index": 18
+        },
+        {
+          "player_id": 201936,
+          "full_name": "Tyreke Evans",
+          "avg_min": 29.5,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612756": {
+      "team_id": 1610612756,
+      "team_name": "Phoenix Suns",
+      "abbreviation": "PHX",
+      "base_off_rating": 116.8,
+      "base_def_rating": 113.7,
+      "base_net_rating": 3.1,
+      "roster": [
+        {
+          "player_id": 76011,
+          "full_name": "Alvan Adams",
+          "avg_min": 27.6,
+          "bit_index": 0
+        },
+        {
+          "player_id": 134,
+          "full_name": "Kevin Johnson",
+          "avg_min": 35.4,
+          "bit_index": 1
+        },
+        {
+          "player_id": 1890,
+          "full_name": "Shawn Marion",
+          "avg_min": 38.1,
+          "bit_index": 2
+        },
+        {
+          "player_id": 959,
+          "full_name": "Steve Nash",
+          "avg_min": 31.0,
+          "bit_index": 3
+        },
+        {
+          "player_id": 1453,
+          "full_name": "Walter Davis",
+          "avg_min": 30.4,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1626164,
+          "full_name": "Devin Booker",
+          "avg_min": 34.8,
+          "bit_index": 5
+        },
+        {
+          "player_id": 78398,
+          "full_name": "Dick Van Arsdale",
+          "avg_min": 34.9,
+          "bit_index": 6
+        },
+        {
+          "player_id": 105,
+          "full_name": "Dan Majerle",
+          "avg_min": 33.1,
+          "bit_index": 7
+        },
+        {
+          "player_id": 2405,
+          "full_name": "Amar'e Stoudemire",
+          "avg_min": 34.5,
+          "bit_index": 8
+        },
+        {
+          "player_id": 77685,
+          "full_name": "Larry Nance",
+          "avg_min": 32.2,
+          "bit_index": 9
+        },
+        {
+          "player_id": 78500,
+          "full_name": "Paul Westphal",
+          "avg_min": 30.4,
+          "bit_index": 10
+        },
+        {
+          "player_id": 204,
+          "full_name": "Jeff Hornacek",
+          "avg_min": 31.1,
+          "bit_index": 11
+        },
+        {
+          "player_id": 2571,
+          "full_name": "Leandro Barbosa",
+          "avg_min": 23.5,
+          "bit_index": 12
+        },
+        {
+          "player_id": 1472,
+          "full_name": "Tom Chambers",
+          "avg_min": 31.6,
+          "bit_index": 13
+        },
+        {
+          "player_id": 770,
+          "full_name": "Mark West",
+          "avg_min": 21.4,
+          "bit_index": 14
+        },
+        {
+          "player_id": 467,
+          "full_name": "Jason Kidd",
+          "avg_min": 39.0,
+          "bit_index": 15
+        },
+        {
+          "player_id": 1628969,
+          "full_name": "Mikal Bridges",
+          "avg_min": 32.3,
+          "bit_index": 16
+        },
+        {
+          "player_id": 787,
+          "full_name": "Charles Barkley",
+          "avg_min": 37.1,
+          "bit_index": 17
+        },
+        {
+          "player_id": 76972,
+          "full_name": "Connie Hawkins",
+          "avg_min": 37.5,
+          "bit_index": 18
+        },
+        {
+          "player_id": 78095,
+          "full_name": "Alvin Scott",
+          "avg_min": 17.0,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612749": {
+      "team_id": 1610612749,
+      "team_name": "Milwaukee Bucks",
+      "abbreviation": "MIL",
+      "base_off_rating": 117.6,
+      "base_def_rating": 115.0,
+      "base_net_rating": 2.6,
+      "roster": [
+        {
+          "player_id": 203507,
+          "full_name": "Giannis Antetokounmpo",
+          "avg_min": 33.2,
+          "bit_index": 0
+        },
+        {
+          "player_id": 203114,
+          "full_name": "Khris Middleton",
+          "avg_min": 32.0,
+          "bit_index": 1
+        },
+        {
+          "player_id": 77626,
+          "full_name": "Sidney Moncrief",
+          "avg_min": 32.2,
+          "bit_index": 2
+        },
+        {
+          "player_id": 76500,
+          "full_name": "Bob Dandridge",
+          "avg_min": 34.0,
+          "bit_index": 3
+        },
+        {
+          "player_id": 299,
+          "full_name": "Glenn Robinson",
+          "avg_min": 37.4,
+          "bit_index": 4
+        },
+        {
+          "player_id": 76003,
+          "full_name": "Kareem Abdul-Jabbar",
+          "avg_min": 40.4,
+          "bit_index": 5
+        },
+        {
+          "player_id": 77160,
+          "full_name": "Marques Johnson",
+          "avg_min": 34.6,
+          "bit_index": 6
+        },
+        {
+          "player_id": 2072,
+          "full_name": "Michael Redd",
+          "avg_min": 33.4,
+          "bit_index": 7
+        },
+        {
+          "player_id": 78600,
+          "full_name": "Brian Winters",
+          "avg_min": 31.7,
+          "bit_index": 8
+        },
+        {
+          "player_id": 76252,
+          "full_name": "Junior Bridgeman",
+          "avg_min": 25.4,
+          "bit_index": 9
+        },
+        {
+          "player_id": 77879,
+          "full_name": "Paul Pressey",
+          "avg_min": 29.4,
+          "bit_index": 10
+        },
+        {
+          "player_id": 951,
+          "full_name": "Ray Allen",
+          "avg_min": 36.6,
+          "bit_index": 11
+        },
+        {
+          "player_id": 187,
+          "full_name": "Terry Cummings",
+          "avg_min": 32.4,
+          "bit_index": 12
+        },
+        {
+          "player_id": 77533,
+          "full_name": "Jon McGlocklin",
+          "avg_min": 24.8,
+          "bit_index": 13
+        },
+        {
+          "player_id": 201572,
+          "full_name": "Brook Lopez",
+          "avg_min": 29.3,
+          "bit_index": 14
+        },
+        {
+          "player_id": 101141,
+          "full_name": "Ersan Ilyasova",
+          "avg_min": 22.3,
+          "bit_index": 15
+        },
+        {
+          "player_id": 101106,
+          "full_name": "Andrew Bogut",
+          "avg_min": 32.7,
+          "bit_index": 16
+        },
+        {
+          "player_id": 894,
+          "full_name": "Ricky Pierce",
+          "avg_min": 26.2,
+          "bit_index": 17
+        },
+        {
+          "player_id": 78149,
+          "full_name": "Jack Sikma",
+          "avg_min": 31.3,
+          "bit_index": 18
+        },
+        {
+          "player_id": 76296,
+          "full_name": "Quinn Buckner",
+          "avg_min": 26.3,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612739": {
+      "team_id": 1610612739,
+      "team_name": "Cleveland Cavaliers",
+      "abbreviation": "CLE",
+      "base_off_rating": 114.7,
+      "base_def_rating": 112.1,
+      "base_net_rating": 2.5,
+      "roster": [
+        {
+          "player_id": 2544,
+          "full_name": "LeBron James",
+          "avg_min": 39.5,
+          "bit_index": 0
+        },
+        {
+          "player_id": 980,
+          "full_name": "Zydrunas Ilgauskas",
+          "avg_min": 28.3,
+          "bit_index": 1
+        },
+        {
+          "player_id": 73,
+          "full_name": "Hot Rod Williams",
+          "avg_min": 31.5,
+          "bit_index": 2
+        },
+        {
+          "player_id": 921,
+          "full_name": "Brad Daugherty",
+          "avg_min": 36.7,
+          "bit_index": 3
+        },
+        {
+          "player_id": 202684,
+          "full_name": "Tristan Thompson",
+          "avg_min": 26.0,
+          "bit_index": 4
+        },
+        {
+          "player_id": 899,
+          "full_name": "Mark Price",
+          "avg_min": 31.5,
+          "bit_index": 5
+        },
+        {
+          "player_id": 78202,
+          "full_name": "Bingo Smith",
+          "avg_min": 24.8,
+          "bit_index": 6
+        },
+        {
+          "player_id": 76348,
+          "full_name": "Austin Carr",
+          "avg_min": 27.5,
+          "bit_index": 7
+        },
+        {
+          "player_id": 77685,
+          "full_name": "Larry Nance",
+          "avg_min": 34.9,
+          "bit_index": 8
+        },
+        {
+          "player_id": 2760,
+          "full_name": "Anderson Varejao",
+          "avg_min": 24.6,
+          "bit_index": 9
+        },
+        {
+          "player_id": 378,
+          "full_name": "Craig Ehlo",
+          "avg_min": 28.9,
+          "bit_index": 10
+        },
+        {
+          "player_id": 201567,
+          "full_name": "Kevin Love",
+          "avg_min": 28.9,
+          "bit_index": 11
+        },
+        {
+          "player_id": 198,
+          "full_name": "Danny Ferry",
+          "avg_min": 20.5,
+          "bit_index": 12
+        },
+        {
+          "player_id": 202681,
+          "full_name": "Kyrie Irving",
+          "avg_min": 34.5,
+          "bit_index": 13
+        },
+        {
+          "player_id": 76392,
+          "full_name": "Jim Chones",
+          "avg_min": 33.0,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1629636,
+          "full_name": "Darius Garland",
+          "avg_min": 33.4,
+          "bit_index": 15
+        },
+        {
+          "player_id": 210,
+          "full_name": "Terrell Brandon",
+          "avg_min": 26.2,
+          "bit_index": 16
+        },
+        {
+          "player_id": 76248,
+          "full_name": "Jim Brewer",
+          "avg_min": 25.7,
+          "bit_index": 17
+        },
+        {
+          "player_id": 78047,
+          "full_name": "Campy Russell",
+          "avg_min": 28.1,
+          "bit_index": 18
+        },
+        {
+          "player_id": 168,
+          "full_name": "Chris Mills",
+          "avg_min": 34.7,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612755": {
+      "team_id": 1610612755,
+      "team_name": "Syracuse Nationals",
+      "abbreviation": "SYR",
+      "base_off_rating": 116.2,
+      "base_def_rating": 113.0,
+      "base_net_rating": 3.1,
+      "roster": [
+        {
+          "player_id": 76681,
+          "full_name": "Julius Erving",
+          "avg_min": 34.6,
+          "bit_index": 0
+        },
+        {
+          "player_id": 76385,
+          "full_name": "Maurice Cheeks",
+          "avg_min": 33.9,
+          "bit_index": 1
+        },
+        {
+          "player_id": 947,
+          "full_name": "Allen Iverson",
+          "avg_min": 41.7,
+          "bit_index": 2
+        },
+        {
+          "player_id": 787,
+          "full_name": "Charles Barkley",
+          "avg_min": 37.4,
+          "bit_index": 3
+        },
+        {
+          "player_id": 76882,
+          "full_name": "Hal Greer",
+          "avg_min": 20.3,
+          "bit_index": 4
+        },
+        {
+          "player_id": 2738,
+          "full_name": "Andre Iguodala",
+          "avg_min": 37.8,
+          "bit_index": 5
+        },
+        {
+          "player_id": 76487,
+          "full_name": "Billy Cunningham",
+          "avg_min": 28.8,
+          "bit_index": 6
+        },
+        {
+          "player_id": 77193,
+          "full_name": "Bobby Jones",
+          "avg_min": 25.1,
+          "bit_index": 7
+        },
+        {
+          "player_id": 77618,
+          "full_name": "Steve Mix",
+          "avg_min": 23.0,
+          "bit_index": 8
+        },
+        {
+          "player_id": 727,
+          "full_name": "Eric Snow",
+          "avg_min": 34.1,
+          "bit_index": 9
+        },
+        {
+          "player_id": 77175,
+          "full_name": "Caldwell Jones",
+          "avg_min": 28.8,
+          "bit_index": 10
+        },
+        {
+          "player_id": 203954,
+          "full_name": "Joel Embiid",
+          "avg_min": 32.3,
+          "bit_index": 11
+        },
+        {
+          "player_id": 201152,
+          "full_name": "Thaddeus Young",
+          "avg_min": 29.9,
+          "bit_index": 12
+        },
+        {
+          "player_id": 221,
+          "full_name": "Clar. Weatherspoon",
+          "avg_min": 36.0,
+          "bit_index": 13
+        },
+        {
+          "player_id": 2223,
+          "full_name": "Samuel Dalembert",
+          "avg_min": 26.5,
+          "bit_index": 14
+        },
+        {
+          "player_id": 243,
+          "full_name": "Aaron McKie",
+          "avg_min": 26.1,
+          "bit_index": 15
+        },
+        {
+          "player_id": 765,
+          "full_name": "Hersey Hawkins",
+          "avg_min": 36.2,
+          "bit_index": 16
+        },
+        {
+          "player_id": 202699,
+          "full_name": "Tobias Harris",
+          "avg_min": 34.2,
+          "bit_index": 17
+        },
+        {
+          "player_id": 78351,
+          "full_name": "Andrew Toney",
+          "avg_min": 27.3,
+          "bit_index": 18
+        },
+        {
+          "player_id": 76375,
+          "full_name": "Wilt Chamberlain",
+          "avg_min": 45.6,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612754": {
+      "team_id": 1610612754,
+      "team_name": "Indiana Pacers",
+      "abbreviation": "IND",
+      "base_off_rating": 120.5,
+      "base_def_rating": 117.6,
+      "base_net_rating": 2.9,
+      "roster": [
+        {
+          "player_id": 397,
+          "full_name": "Reggie Miller",
+          "avg_min": 34.5,
+          "bit_index": 0
+        },
+        {
+          "player_id": 22,
+          "full_name": "Rik Smits",
+          "avg_min": 26.6,
+          "bit_index": 1
+        },
+        {
+          "player_id": 313,
+          "full_name": "Vern Fleming",
+          "avg_min": 27.8,
+          "bit_index": 2
+        },
+        {
+          "player_id": 905,
+          "full_name": "Dale Davis",
+          "avg_min": 29.6,
+          "bit_index": 3
+        },
+        {
+          "player_id": 979,
+          "full_name": "Jermaine O'Neal",
+          "avg_min": 35.2,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1626167,
+          "full_name": "Myles Turner",
+          "avg_min": 28.9,
+          "bit_index": 5
+        },
+        {
+          "player_id": 1006,
+          "full_name": "Herb Williams",
+          "avg_min": 32.0,
+          "bit_index": 6
+        },
+        {
+          "player_id": 101122,
+          "full_name": "Danny Granger",
+          "avg_min": 32.5,
+          "bit_index": 7
+        },
+        {
+          "player_id": 456,
+          "full_name": "Chuck Person",
+          "avg_min": 35.6,
+          "bit_index": 8
+        },
+        {
+          "player_id": 202331,
+          "full_name": "Paul George",
+          "avg_min": 33.5,
+          "bit_index": 9
+        },
+        {
+          "player_id": 1902,
+          "full_name": "Jeff Foster",
+          "avg_min": 20.3,
+          "bit_index": 10
+        },
+        {
+          "player_id": 201579,
+          "full_name": "Roy Hibbert",
+          "avg_min": 26.5,
+          "bit_index": 11
+        },
+        {
+          "player_id": 365,
+          "full_name": "Derrick McKey",
+          "avg_min": 27.1,
+          "bit_index": 12
+        },
+        {
+          "player_id": 349,
+          "full_name": "Mark Jackson",
+          "avg_min": 30.0,
+          "bit_index": 13
+        },
+        {
+          "player_id": 147,
+          "full_name": "Jalen Rose",
+          "avg_min": 30.1,
+          "bit_index": 14
+        },
+        {
+          "player_id": 2224,
+          "full_name": "Jamaal Tinsley",
+          "avg_min": 29.7,
+          "bit_index": 15
+        },
+        {
+          "player_id": 78257,
+          "full_name": "Steve Stipanovich",
+          "avg_min": 31.3,
+          "bit_index": 16
+        },
+        {
+          "player_id": 77290,
+          "full_name": "Billy Knight",
+          "avg_min": 28.7,
+          "bit_index": 17
+        },
+        {
+          "player_id": 96,
+          "full_name": "Detlef Schrempf",
+          "avg_min": 33.9,
+          "bit_index": 18
+        },
+        {
+          "player_id": 213,
+          "full_name": "Antonio Davis",
+          "avg_min": 25.3,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612753": {
+      "team_id": 1610612753,
+      "team_name": "Orlando Magic",
+      "abbreviation": "ORL",
+      "base_off_rating": 112.9,
+      "base_def_rating": 110.8,
+      "base_net_rating": 2.2,
+      "roster": [
+        {
+          "player_id": 2730,
+          "full_name": "Dwight Howard",
+          "avg_min": 36.4,
+          "bit_index": 0
+        },
+        {
+          "player_id": 98,
+          "full_name": "Nick Anderson",
+          "avg_min": 32.7,
+          "bit_index": 1
+        },
+        {
+          "player_id": 2749,
+          "full_name": "Jameer Nelson",
+          "avg_min": 29.4,
+          "bit_index": 2
+        },
+        {
+          "player_id": 202696,
+          "full_name": "Nikola Vu\u010devi\u0107",
+          "avg_min": 31.8,
+          "bit_index": 3
+        },
+        {
+          "player_id": 2045,
+          "full_name": "Hedo Turkoglu",
+          "avg_min": 33.0,
+          "bit_index": 4
+        },
+        {
+          "player_id": 270,
+          "full_name": "Horace Grant",
+          "avg_min": 34.9,
+          "bit_index": 5
+        },
+        {
+          "player_id": 358,
+          "full_name": "Anfernee Hardaway",
+          "avg_min": 37.6,
+          "bit_index": 6
+        },
+        {
+          "player_id": 353,
+          "full_name": "Darrell Armstrong",
+          "avg_min": 28.7,
+          "bit_index": 7
+        },
+        {
+          "player_id": 192,
+          "full_name": "Dennis Scott",
+          "avg_min": 30.9,
+          "bit_index": 8
+        },
+        {
+          "player_id": 203095,
+          "full_name": "Evan Fournier",
+          "avg_min": 31.6,
+          "bit_index": 9
+        },
+        {
+          "player_id": 406,
+          "full_name": "Shaquille O'Neal",
+          "avg_min": 37.9,
+          "bit_index": 10
+        },
+        {
+          "player_id": 203932,
+          "full_name": "Aaron Gordon",
+          "avg_min": 28.7,
+          "bit_index": 11
+        },
+        {
+          "player_id": 1503,
+          "full_name": "Tracy McGrady",
+          "avg_min": 39.7,
+          "bit_index": 12
+        },
+        {
+          "player_id": 101,
+          "full_name": "Scott Skiles",
+          "avg_min": 31.0,
+          "bit_index": 13
+        },
+        {
+          "player_id": 1740,
+          "full_name": "Rashard Lewis",
+          "avg_min": 36.2,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1727,
+          "full_name": "Pat Garrity",
+          "avg_min": 20.7,
+          "bit_index": 15
+        },
+        {
+          "player_id": 448,
+          "full_name": "Bo Outlaw",
+          "avg_min": 26.8,
+          "bit_index": 16
+        },
+        {
+          "player_id": 1630532,
+          "full_name": "Franz Wagner",
+          "avg_min": 32.4,
+          "bit_index": 17
+        },
+        {
+          "player_id": 200755,
+          "full_name": "JJ Redick",
+          "avg_min": 21.7,
+          "bit_index": 18
+        },
+        {
+          "player_id": 203082,
+          "full_name": "Terrence Ross",
+          "avg_min": 26.2,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612747": {
+      "team_id": 1610612747,
+      "team_name": "Minneapolis Lakers",
+      "abbreviation": "MNL",
+      "base_off_rating": 115.4,
+      "base_def_rating": 114.8,
+      "base_net_rating": 0.6,
+      "roster": [
+        {
+          "player_id": 977,
+          "full_name": "Kobe Bryant",
+          "avg_min": 36.6,
+          "bit_index": 0
+        },
+        {
+          "player_id": 76003,
+          "full_name": "Kareem Abdul-Jabbar",
+          "avg_min": 34.4,
+          "bit_index": 1
+        },
+        {
+          "player_id": 77142,
+          "full_name": "Magic Johnson",
+          "avg_min": 37.2,
+          "bit_index": 2
+        },
+        {
+          "player_id": 1460,
+          "full_name": "James Worthy",
+          "avg_min": 33.0,
+          "bit_index": 3
+        },
+        {
+          "player_id": 2,
+          "full_name": "Byron Scott",
+          "avg_min": 30.5,
+          "bit_index": 4
+        },
+        {
+          "player_id": 965,
+          "full_name": "Derek Fisher",
+          "avg_min": 25.8,
+          "bit_index": 5
+        },
+        {
+          "player_id": 76444,
+          "full_name": "Michael Cooper",
+          "avg_min": 27.2,
+          "bit_index": 6
+        },
+        {
+          "player_id": 78497,
+          "full_name": "Jerry West",
+          "avg_min": 23.5,
+          "bit_index": 7
+        },
+        {
+          "player_id": 920,
+          "full_name": "A.C. Green",
+          "avg_min": 28.7,
+          "bit_index": 8
+        },
+        {
+          "player_id": 406,
+          "full_name": "Shaquille O'Neal",
+          "avg_min": 38.2,
+          "bit_index": 9
+        },
+        {
+          "player_id": 78532,
+          "full_name": "Jamaal Wilkes",
+          "avg_min": 33.6,
+          "bit_index": 10
+        },
+        {
+          "player_id": 1885,
+          "full_name": "Lamar Odom",
+          "avg_min": 34.8,
+          "bit_index": 11
+        },
+        {
+          "player_id": 76832,
+          "full_name": "Gail Goodrich",
+          "avg_min": 26.9,
+          "bit_index": 12
+        },
+        {
+          "player_id": 77721,
+          "full_name": "Norm Nixon",
+          "avg_min": 37.1,
+          "bit_index": 13
+        },
+        {
+          "player_id": 2200,
+          "full_name": "Pau Gasol",
+          "avg_min": 36.3,
+          "bit_index": 14
+        },
+        {
+          "player_id": 124,
+          "full_name": "Vlade Divac",
+          "avg_min": 29.2,
+          "bit_index": 15
+        },
+        {
+          "player_id": 922,
+          "full_name": "Elden Campbell",
+          "avg_min": 24.9,
+          "bit_index": 16
+        },
+        {
+          "player_id": 76375,
+          "full_name": "Wilt Chamberlain",
+          "avg_min": 40.1,
+          "bit_index": 17
+        },
+        {
+          "player_id": 2544,
+          "full_name": "LeBron James",
+          "avg_min": 35.5,
+          "bit_index": 18
+        },
+        {
+          "player_id": 76127,
+          "full_name": "Elgin Baylor",
+          "avg_min": 16.8,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612744": {
+      "team_id": 1610612744,
+      "team_name": "Philadelphia Warriors",
+      "abbreviation": "PHW",
+      "base_off_rating": 116.9,
+      "base_def_rating": 114.5,
+      "base_net_rating": 2.4,
+      "roster": [
+        {
+          "player_id": 201939,
+          "full_name": "Stephen Curry",
+          "avg_min": 34.5,
+          "bit_index": 0
+        },
+        {
+          "player_id": 600001,
+          "full_name": "Nate Thurmond",
+          "avg_min": 40.4,
+          "bit_index": 1
+        },
+        {
+          "player_id": 202691,
+          "full_name": "Klay Thompson",
+          "avg_min": 33.3,
+          "bit_index": 2
+        },
+        {
+          "player_id": 203110,
+          "full_name": "Draymond Green",
+          "avg_min": 29.6,
+          "bit_index": 3
+        },
+        {
+          "player_id": 904,
+          "full_name": "Chris Mullin",
+          "avg_min": 35.1,
+          "bit_index": 4
+        },
+        {
+          "player_id": 600013,
+          "full_name": "Rick Barry",
+          "avg_min": 38.0,
+          "bit_index": 5
+        },
+        {
+          "player_id": 77662,
+          "full_name": "Jeff Mullins",
+          "avg_min": 32.3,
+          "bit_index": 6
+        },
+        {
+          "player_id": 76375,
+          "full_name": "Wilt Chamberlain",
+          "avg_min": 47.2,
+          "bit_index": 7
+        },
+        {
+          "player_id": 78139,
+          "full_name": "Purvis Short",
+          "avg_min": 31.2,
+          "bit_index": 8
+        },
+        {
+          "player_id": 78195,
+          "full_name": "Larry Smith",
+          "avg_min": 28.4,
+          "bit_index": 9
+        },
+        {
+          "player_id": 76353,
+          "full_name": "Joe Barry Carroll",
+          "avg_min": 35.4,
+          "bit_index": 10
+        },
+        {
+          "player_id": 77357,
+          "full_name": "Clyde Lee",
+          "avg_min": 27.4,
+          "bit_index": 11
+        },
+        {
+          "player_id": 896,
+          "full_name": "Tim Hardaway",
+          "avg_min": 37.2,
+          "bit_index": 12
+        },
+        {
+          "player_id": 84,
+          "full_name": "Latrell Sprewell",
+          "avg_min": 40.0,
+          "bit_index": 13
+        },
+        {
+          "player_id": 2202,
+          "full_name": "Jason Richardson",
+          "avg_min": 35.6,
+          "bit_index": 14
+        },
+        {
+          "player_id": 76070,
+          "full_name": "Alvin Attles",
+          "avg_min": 20.2,
+          "bit_index": 15
+        },
+        {
+          "player_id": 101145,
+          "full_name": "Monta Ellis",
+          "avg_min": 35.3,
+          "bit_index": 16
+        },
+        {
+          "player_id": 2738,
+          "full_name": "Andre Iguodala",
+          "avg_min": 26.5,
+          "bit_index": 17
+        },
+        {
+          "player_id": 78199,
+          "full_name": "Phil Smith",
+          "avg_min": 31.1,
+          "bit_index": 18
+        },
+        {
+          "player_id": 77917,
+          "full_name": "Clifford Ray",
+          "avg_min": 24.8,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612748": {
+      "team_id": 1610612748,
+      "team_name": "Miami Heat",
+      "abbreviation": "MIA",
+      "base_off_rating": 113.3,
+      "base_def_rating": 111.5,
+      "base_net_rating": 1.8,
+      "roster": [
+        {
+          "player_id": 2548,
+          "full_name": "Dwyane Wade",
+          "avg_min": 35.2,
+          "bit_index": 0
+        },
+        {
+          "player_id": 2617,
+          "full_name": "Udonis Haslem",
+          "avg_min": 24.3,
+          "bit_index": 1
+        },
+        {
+          "player_id": 1628389,
+          "full_name": "Bam Adebayo",
+          "avg_min": 31.1,
+          "bit_index": 2
+        },
+        {
+          "player_id": 297,
+          "full_name": "Alonzo Mourning",
+          "avg_min": 29.2,
+          "bit_index": 3
+        },
+        {
+          "player_id": 201596,
+          "full_name": "Mario Chalmers",
+          "avg_min": 28.0,
+          "bit_index": 4
+        },
+        {
+          "player_id": 779,
+          "full_name": "Glen Rice",
+          "avg_min": 35.7,
+          "bit_index": 5
+        },
+        {
+          "player_id": 2547,
+          "full_name": "Chris Bosh",
+          "avg_min": 34.3,
+          "bit_index": 6
+        },
+        {
+          "player_id": 224,
+          "full_name": "Eddie Jones",
+          "avg_min": 36.4,
+          "bit_index": 7
+        },
+        {
+          "player_id": 3,
+          "full_name": "Grant Long",
+          "avg_min": 31.5,
+          "bit_index": 8
+        },
+        {
+          "player_id": 2544,
+          "full_name": "LeBron James",
+          "avg_min": 38.9,
+          "bit_index": 9
+        },
+        {
+          "player_id": 896,
+          "full_name": "Tim Hardaway",
+          "avg_min": 36.2,
+          "bit_index": 10
+        },
+        {
+          "player_id": 938,
+          "full_name": "Rony Seikaly",
+          "avg_min": 32.4,
+          "bit_index": 11
+        },
+        {
+          "player_id": 201609,
+          "full_name": "Goran Dragic",
+          "avg_min": 31.1,
+          "bit_index": 12
+        },
+        {
+          "player_id": 1629639,
+          "full_name": "Tyler Herro",
+          "avg_min": 32.3,
+          "bit_index": 13
+        },
+        {
+          "player_id": 202710,
+          "full_name": "Jimmy Butler III",
+          "avg_min": 34.3,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1629130,
+          "full_name": "Duncan Robinson",
+          "avg_min": 25.3,
+          "bit_index": 15
+        },
+        {
+          "player_id": 902,
+          "full_name": "Bimbo Coles",
+          "avg_min": 25.0,
+          "bit_index": 16
+        },
+        {
+          "player_id": 258,
+          "full_name": "Brian Grant",
+          "avg_min": 31.9,
+          "bit_index": 17
+        },
+        {
+          "player_id": 136,
+          "full_name": "P.J. Brown",
+          "avg_min": 31.2,
+          "bit_index": 18
+        },
+        {
+          "player_id": 1626196,
+          "full_name": "Josh Richardson",
+          "avg_min": 29.5,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612758": {
+      "team_id": 1610612758,
+      "team_name": "Rochester Royals",
+      "abbreviation": "ROC",
+      "base_off_rating": 116.2,
+      "base_def_rating": 114.4,
+      "base_net_rating": 1.8,
+      "roster": [
+        {
+          "player_id": 77326,
+          "full_name": "Sam Lacey",
+          "avg_min": 28.3,
+          "bit_index": 0
+        },
+        {
+          "player_id": 600015,
+          "full_name": "Oscar Robertson",
+          "avg_min": 28.9,
+          "bit_index": 1
+        },
+        {
+          "player_id": 978,
+          "full_name": "Peja Stojakovic",
+          "avg_min": 34.4,
+          "bit_index": 2
+        },
+        {
+          "player_id": 782,
+          "full_name": "Mitch Richmond",
+          "avg_min": 37.8,
+          "bit_index": 3
+        },
+        {
+          "player_id": 78482,
+          "full_name": "Scott Wedman",
+          "avg_min": 33.1,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1710,
+          "full_name": "Mike Bibby",
+          "avg_min": 36.0,
+          "bit_index": 5
+        },
+        {
+          "player_id": 1628368,
+          "full_name": "De'Aaron Fox",
+          "avg_min": 33.3,
+          "bit_index": 6
+        },
+        {
+          "player_id": 185,
+          "full_name": "Chris Webber",
+          "avg_min": 38.9,
+          "bit_index": 7
+        },
+        {
+          "player_id": 124,
+          "full_name": "Vlade Divac",
+          "avg_min": 30.0,
+          "bit_index": 8
+        },
+        {
+          "player_id": 202326,
+          "full_name": "DeMarcus Cousins",
+          "avg_min": 31.9,
+          "bit_index": 9
+        },
+        {
+          "player_id": 201574,
+          "full_name": "Jason Thompson",
+          "avg_min": 26.5,
+          "bit_index": 10
+        },
+        {
+          "player_id": 76054,
+          "full_name": "Nate Archibald",
+          "avg_min": 32.4,
+          "bit_index": 11
+        },
+        {
+          "player_id": 57,
+          "full_name": "Doug Christie",
+          "avg_min": 34.8,
+          "bit_index": 12
+        },
+        {
+          "player_id": 1802,
+          "full_name": "Brad Miller",
+          "avg_min": 34.2,
+          "bit_index": 13
+        },
+        {
+          "player_id": 1489,
+          "full_name": "Lionel Simmons",
+          "avg_min": 29.5,
+          "bit_index": 14
+        },
+        {
+          "player_id": 203084,
+          "full_name": "Harrison Barnes",
+          "avg_min": 32.9,
+          "bit_index": 15
+        },
+        {
+          "player_id": 78,
+          "full_name": "LaSalle Thompson",
+          "avg_min": 24.6,
+          "bit_index": 16
+        },
+        {
+          "player_id": 698,
+          "full_name": "Eddie Johnson",
+          "avg_min": 25.8,
+          "bit_index": 17
+        },
+        {
+          "player_id": 47,
+          "full_name": "Wayman Tisdale",
+          "avg_min": 33.8,
+          "bit_index": 18
+        },
+        {
+          "player_id": 78310,
+          "full_name": "Reggie Theus",
+          "avg_min": 34.3,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612745": {
+      "team_id": 1610612745,
+      "team_name": "San Diego Rockets",
+      "abbreviation": "SDR",
+      "base_off_rating": 113.7,
+      "base_def_rating": 112.8,
+      "base_net_rating": 0.9,
+      "roster": [
+        {
+          "player_id": 165,
+          "full_name": "Hakeem Olajuwon",
+          "avg_min": 36.8,
+          "bit_index": 0
+        },
+        {
+          "player_id": 77669,
+          "full_name": "Calvin Murphy",
+          "avg_min": 26.1,
+          "bit_index": 1
+        },
+        {
+          "player_id": 201935,
+          "full_name": "James Harden",
+          "avg_min": 37.2,
+          "bit_index": 2
+        },
+        {
+          "player_id": 77936,
+          "full_name": "Robert Reid",
+          "avg_min": 28.5,
+          "bit_index": 3
+        },
+        {
+          "player_id": 78350,
+          "full_name": "Rudy Tomjanovich",
+          "avg_min": 26.6,
+          "bit_index": 4
+        },
+        {
+          "player_id": 901,
+          "full_name": "Otis Thorpe",
+          "avg_min": 36.0,
+          "bit_index": 5
+        },
+        {
+          "player_id": 77449,
+          "full_name": "Moses Malone",
+          "avg_min": 37.1,
+          "bit_index": 6
+        },
+        {
+          "player_id": 77353,
+          "full_name": "Allen Leavell",
+          "avg_min": 22.4,
+          "bit_index": 7
+        },
+        {
+          "player_id": 76979,
+          "full_name": "Elvin Hayes",
+          "avg_min": 29.2,
+          "bit_index": 8
+        },
+        {
+          "player_id": 2397,
+          "full_name": "Yao Ming",
+          "avg_min": 32.6,
+          "bit_index": 9
+        },
+        {
+          "player_id": 1749,
+          "full_name": "Cuttino Mobley",
+          "avg_min": 37.4,
+          "bit_index": 10
+        },
+        {
+          "player_id": 181,
+          "full_name": "Kenny Smith",
+          "avg_min": 29.4,
+          "bit_index": 11
+        },
+        {
+          "player_id": 2772,
+          "full_name": "Trevor Ariza",
+          "avg_min": 35.4,
+          "bit_index": 12
+        },
+        {
+          "player_id": 1883,
+          "full_name": "Steve Francis",
+          "avg_min": 39.2,
+          "bit_index": 13
+        },
+        {
+          "player_id": 1622,
+          "full_name": "Rodney McCray",
+          "avg_min": 34.1,
+          "bit_index": 14
+        },
+        {
+          "player_id": 137,
+          "full_name": "Vernon Maxwell",
+          "avg_min": 33.4,
+          "bit_index": 15
+        },
+        {
+          "player_id": 77710,
+          "full_name": "Mike Newlin",
+          "avg_min": 22.3,
+          "bit_index": 16
+        },
+        {
+          "player_id": 201569,
+          "full_name": "Eric Gordon",
+          "avg_min": 30.8,
+          "bit_index": 17
+        },
+        {
+          "player_id": 2203,
+          "full_name": "Shane Battier",
+          "avg_min": 34.5,
+          "bit_index": 18
+        },
+        {
+          "player_id": 2449,
+          "full_name": "Luis Scola",
+          "avg_min": 30.4,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612741": {
+      "team_id": 1610612741,
+      "team_name": "Chicago Bulls",
+      "abbreviation": "CHI",
+      "base_off_rating": 114.0,
+      "base_def_rating": 115.7,
+      "base_net_rating": -1.7,
+      "roster": [
+        {
+          "player_id": 893,
+          "full_name": "Michael Jordan",
+          "avg_min": 39.1,
+          "bit_index": 0
+        },
+        {
+          "player_id": 937,
+          "full_name": "Scottie Pippen",
+          "avg_min": 36.1,
+          "bit_index": 1
+        },
+        {
+          "player_id": 2550,
+          "full_name": "Kirk Hinrich",
+          "avg_min": 31.5,
+          "bit_index": 2
+        },
+        {
+          "player_id": 2736,
+          "full_name": "Luol Deng",
+          "avg_min": 36.2,
+          "bit_index": 3
+        },
+        {
+          "player_id": 270,
+          "full_name": "Horace Grant",
+          "avg_min": 34.0,
+          "bit_index": 4
+        },
+        {
+          "player_id": 77412,
+          "full_name": "Bob Love",
+          "avg_min": 32.5,
+          "bit_index": 5
+        },
+        {
+          "player_id": 78173,
+          "full_name": "Jerry Sloan",
+          "avg_min": 25.6,
+          "bit_index": 6
+        },
+        {
+          "player_id": 201149,
+          "full_name": "Joakim Noah",
+          "avg_min": 30.0,
+          "bit_index": 7
+        },
+        {
+          "player_id": 78406,
+          "full_name": "Norm Van Lier",
+          "avg_min": 31.7,
+          "bit_index": 8
+        },
+        {
+          "player_id": 77820,
+          "full_name": "John Paxson",
+          "avg_min": 23.8,
+          "bit_index": 9
+        },
+        {
+          "player_id": 600014,
+          "full_name": "Artis Gilmore",
+          "avg_min": 32.7,
+          "bit_index": 10
+        },
+        {
+          "player_id": 201565,
+          "full_name": "Derrick Rose",
+          "avg_min": 35.5,
+          "bit_index": 11
+        },
+        {
+          "player_id": 76453,
+          "full_name": "Dave Corzine",
+          "avg_min": 26.7,
+          "bit_index": 12
+        },
+        {
+          "player_id": 769,
+          "full_name": "B.J. Armstrong",
+          "avg_min": 25.4,
+          "bit_index": 13
+        },
+        {
+          "player_id": 201959,
+          "full_name": "Taj Gibson",
+          "avg_min": 24.9,
+          "bit_index": 14
+        },
+        {
+          "player_id": 76881,
+          "full_name": "David Greenwood",
+          "avg_min": 32.2,
+          "bit_index": 15
+        },
+        {
+          "player_id": 389,
+          "full_name": "Toni Kukoc",
+          "avg_min": 29.2,
+          "bit_index": 16
+        },
+        {
+          "player_id": 78435,
+          "full_name": "Chet Walker",
+          "avg_min": 28.6,
+          "bit_index": 17
+        },
+        {
+          "player_id": 78310,
+          "full_name": "Reggie Theus",
+          "avg_min": 32.9,
+          "bit_index": 18
+        },
+        {
+          "player_id": 203897,
+          "full_name": "Zach LaVine",
+          "avg_min": 34.5,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612737": {
+      "team_id": 1610612737,
+      "team_name": "Tri-Cities Blackhawks",
+      "abbreviation": "TCB",
+      "base_off_rating": 116.4,
+      "base_def_rating": 118.4,
+      "base_net_rating": -2.0,
+      "roster": [
+        {
+          "player_id": 1122,
+          "full_name": "Dominique Wilkins",
+          "avg_min": 37.0,
+          "bit_index": 0
+        },
+        {
+          "player_id": 2746,
+          "full_name": "Josh Smith",
+          "avg_min": 34.3,
+          "bit_index": 1
+        },
+        {
+          "player_id": 77074,
+          "full_name": "Lou Hudson",
+          "avg_min": 31.2,
+          "bit_index": 2
+        },
+        {
+          "player_id": 788,
+          "full_name": "Kevin Willis",
+          "avg_min": 30.3,
+          "bit_index": 3
+        },
+        {
+          "player_id": 76253,
+          "full_name": "Bill Bridges",
+          "avg_min": 31.2,
+          "bit_index": 4
+        },
+        {
+          "player_id": 78014,
+          "full_name": "Tree Rollins",
+          "avg_min": 25.2,
+          "bit_index": 5
+        },
+        {
+          "player_id": 201143,
+          "full_name": "Al Horford",
+          "avg_min": 33.6,
+          "bit_index": 6
+        },
+        {
+          "player_id": 2207,
+          "full_name": "Joe Johnson",
+          "avg_min": 38.9,
+          "bit_index": 7
+        },
+        {
+          "player_id": 302,
+          "full_name": "Mookie Blaylock",
+          "avg_min": 37.4,
+          "bit_index": 8
+        },
+        {
+          "player_id": 77144,
+          "full_name": "Eddie Johnson",
+          "avg_min": 29.6,
+          "bit_index": 9
+        },
+        {
+          "player_id": 78530,
+          "full_name": "Lenny Wilkens",
+          "avg_min": 30.3,
+          "bit_index": 10
+        },
+        {
+          "player_id": 470,
+          "full_name": "Doc Rivers",
+          "avg_min": 30.6,
+          "bit_index": 11
+        },
+        {
+          "player_id": 1629027,
+          "full_name": "Trae Young",
+          "avg_min": 34.6,
+          "bit_index": 12
+        },
+        {
+          "player_id": 76598,
+          "full_name": "John Drew",
+          "avg_min": 28.4,
+          "bit_index": 13
+        },
+        {
+          "player_id": 76133,
+          "full_name": "Zelmo Beaty",
+          "avg_min": 30.3,
+          "bit_index": 14
+        },
+        {
+          "player_id": 77847,
+          "full_name": "Bob Pettit",
+          "avg_min": 18.3,
+          "bit_index": 15
+        },
+        {
+          "player_id": 402,
+          "full_name": "Jon Koncak",
+          "avg_min": 21.1,
+          "bit_index": 16
+        },
+        {
+          "player_id": 201952,
+          "full_name": "Jeff Teague",
+          "avg_min": 26.2,
+          "bit_index": 17
+        },
+        {
+          "player_id": 101107,
+          "full_name": "Marvin Williams",
+          "avg_min": 29.9,
+          "bit_index": 18
+        },
+        {
+          "player_id": 78025,
+          "full_name": "Dan Roundfield",
+          "avg_min": 33.7,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612751": {
+      "team_id": 1610612751,
+      "team_name": "New York Nets",
+      "abbreviation": "NYN",
+      "base_off_rating": 112.4,
+      "base_def_rating": 115.4,
+      "base_net_rating": -2.9,
+      "roster": [
+        {
+          "player_id": 433,
+          "full_name": "Buck Williams",
+          "avg_min": 36.3,
+          "bit_index": 0
+        },
+        {
+          "player_id": 467,
+          "full_name": "Jason Kidd",
+          "avg_min": 37.6,
+          "bit_index": 1
+        },
+        {
+          "player_id": 2210,
+          "full_name": "Richard Jefferson",
+          "avg_min": 35.6,
+          "bit_index": 2
+        },
+        {
+          "player_id": 201572,
+          "full_name": "Brook Lopez",
+          "avg_min": 32.4,
+          "bit_index": 3
+        },
+        {
+          "player_id": 954,
+          "full_name": "Kerry Kittles",
+          "avg_min": 33.5,
+          "bit_index": 4
+        },
+        {
+          "player_id": 356,
+          "full_name": "Chris Morris",
+          "avg_min": 30.0,
+          "bit_index": 5
+        },
+        {
+          "player_id": 1713,
+          "full_name": "Vince Carter",
+          "avg_min": 38.1,
+          "bit_index": 6
+        },
+        {
+          "player_id": 2215,
+          "full_name": "Jason Collins",
+          "avg_min": 23.8,
+          "bit_index": 7
+        },
+        {
+          "player_id": 76826,
+          "full_name": "Mike Gminski",
+          "avg_min": 24.6,
+          "bit_index": 8
+        },
+        {
+          "player_id": 934,
+          "full_name": "Derrick Coleman",
+          "avg_min": 36.0,
+          "bit_index": 9
+        },
+        {
+          "player_id": 203925,
+          "full_name": "Joe Harris",
+          "avg_min": 27.1,
+          "bit_index": 10
+        },
+        {
+          "player_id": 76435,
+          "full_name": "Darwin Cook",
+          "avg_min": 24.5,
+          "bit_index": 11
+        },
+        {
+          "player_id": 76170,
+          "full_name": "Otis Birdsong",
+          "avg_min": 30.1,
+          "bit_index": 12
+        },
+        {
+          "player_id": 1496,
+          "full_name": "Keith Van Horn",
+          "avg_min": 34.4,
+          "bit_index": 13
+        },
+        {
+          "player_id": 2030,
+          "full_name": "Kenyon Martin",
+          "avg_min": 34.7,
+          "bit_index": 14
+        },
+        {
+          "player_id": 383,
+          "full_name": "Kendall Gill",
+          "avg_min": 33.9,
+          "bit_index": 15
+        },
+        {
+          "player_id": 446,
+          "full_name": "Lucious Harris",
+          "avg_min": 21.5,
+          "bit_index": 16
+        },
+        {
+          "player_id": 77263,
+          "full_name": "Albert King",
+          "avg_min": 25.4,
+          "bit_index": 17
+        },
+        {
+          "player_id": 2207,
+          "full_name": "Joe Johnson",
+          "avg_min": 34.9,
+          "bit_index": 18
+        },
+        {
+          "player_id": 101114,
+          "full_name": "Deron Williams",
+          "avg_min": 34.4,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612762": {
+      "team_id": 1610612762,
+      "team_name": "New Orleans Jazz",
+      "abbreviation": "NOJ",
+      "base_off_rating": 114.5,
+      "base_def_rating": 119.6,
+      "base_net_rating": -5.1,
+      "roster": [
+        {
+          "player_id": 252,
+          "full_name": "Karl Malone",
+          "avg_min": 37.7,
+          "bit_index": 0
+        },
+        {
+          "player_id": 304,
+          "full_name": "John Stockton",
+          "avg_min": 32.1,
+          "bit_index": 1
+        },
+        {
+          "player_id": 76631,
+          "full_name": "Mark Eaton",
+          "avg_min": 29.0,
+          "bit_index": 2
+        },
+        {
+          "player_id": 1847,
+          "full_name": "Thurl Bailey",
+          "avg_min": 29.1,
+          "bit_index": 3
+        },
+        {
+          "player_id": 1905,
+          "full_name": "Andrei Kirilenko",
+          "avg_min": 30.8,
+          "bit_index": 4
+        },
+        {
+          "player_id": 76890,
+          "full_name": "Darrell Griffith",
+          "avg_min": 27.6,
+          "bit_index": 5
+        },
+        {
+          "player_id": 203497,
+          "full_name": "Rudy Gobert",
+          "avg_min": 30.2,
+          "bit_index": 6
+        },
+        {
+          "player_id": 935,
+          "full_name": "Bryon Russell",
+          "avg_min": 26.9,
+          "bit_index": 7
+        },
+        {
+          "player_id": 76504,
+          "full_name": "Adrian Dantley",
+          "avg_min": 38.0,
+          "bit_index": 8
+        },
+        {
+          "player_id": 76874,
+          "full_name": "Rickey Green",
+          "avg_min": 28.1,
+          "bit_index": 9
+        },
+        {
+          "player_id": 204,
+          "full_name": "Jeff Hornacek",
+          "avg_min": 31.2,
+          "bit_index": 10
+        },
+        {
+          "player_id": 101114,
+          "full_name": "Deron Williams",
+          "avg_min": 36.0,
+          "bit_index": 11
+        },
+        {
+          "player_id": 202324,
+          "full_name": "Derrick Favors",
+          "avg_min": 24.9,
+          "bit_index": 12
+        },
+        {
+          "player_id": 202330,
+          "full_name": "Gordon Hayward",
+          "avg_min": 31.5,
+          "bit_index": 13
+        },
+        {
+          "player_id": 204060,
+          "full_name": "Joe Ingles",
+          "avg_min": 26.1,
+          "bit_index": 14
+        },
+        {
+          "player_id": 2246,
+          "full_name": "Mehmet Okur",
+          "avg_min": 31.8,
+          "bit_index": 15
+        },
+        {
+          "player_id": 731,
+          "full_name": "Greg Ostertag",
+          "avg_min": 20.2,
+          "bit_index": 16
+        },
+        {
+          "player_id": 200794,
+          "full_name": "Paul Millsap",
+          "avg_min": 27.1,
+          "bit_index": 17
+        },
+        {
+          "player_id": 2430,
+          "full_name": "Carlos Boozer",
+          "avg_min": 34.5,
+          "bit_index": 18
+        },
+        {
+          "player_id": 1723,
+          "full_name": "Matt Harpring",
+          "avg_min": 25.5,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612763": {
+      "team_id": 1610612763,
+      "team_name": "Vancouver Grizzlies",
+      "abbreviation": "VAN",
+      "base_off_rating": 106.8,
+      "base_def_rating": 113.7,
+      "base_net_rating": -6.9,
+      "roster": [
+        {
+          "player_id": 201188,
+          "full_name": "Marc Gasol",
+          "avg_min": 34.1,
+          "bit_index": 0
+        },
+        {
+          "player_id": 201144,
+          "full_name": "Mike Conley",
+          "avg_min": 32.9,
+          "bit_index": 1
+        },
+        {
+          "player_id": 2216,
+          "full_name": "Zach Randolph",
+          "avg_min": 32.9,
+          "bit_index": 2
+        },
+        {
+          "player_id": 200752,
+          "full_name": "Rudy Gay",
+          "avg_min": 36.2,
+          "bit_index": 3
+        },
+        {
+          "player_id": 2200,
+          "full_name": "Pau Gasol",
+          "avg_min": 35.4,
+          "bit_index": 4
+        },
+        {
+          "player_id": 949,
+          "full_name": "Shareef Abdur-Rahim",
+          "avg_min": 38.0,
+          "bit_index": 5
+        },
+        {
+          "player_id": 2034,
+          "full_name": "Mike Miller",
+          "avg_min": 29.8,
+          "bit_index": 6
+        },
+        {
+          "player_id": 2203,
+          "full_name": "Shane Battier",
+          "avg_min": 31.5,
+          "bit_index": 7
+        },
+        {
+          "player_id": 2754,
+          "full_name": "Tony Allen",
+          "avg_min": 25.4,
+          "bit_index": 8
+        },
+        {
+          "player_id": 1628991,
+          "full_name": "Jaren Jackson Jr.",
+          "avg_min": 28.7,
+          "bit_index": 9
+        },
+        {
+          "player_id": 735,
+          "full_name": "Bryant Reeves",
+          "avg_min": 30.6,
+          "bit_index": 10
+        },
+        {
+          "player_id": 1628415,
+          "full_name": "Dillon Brooks",
+          "avg_min": 28.8,
+          "bit_index": 11
+        },
+        {
+          "player_id": 1629630,
+          "full_name": "Ja Morant",
+          "avg_min": 32.3,
+          "bit_index": 12
+        },
+        {
+          "player_id": 201564,
+          "full_name": "O.J. Mayo",
+          "avg_min": 32.4,
+          "bit_index": 13
+        },
+        {
+          "player_id": 1630217,
+          "full_name": "Desmond Bane",
+          "avg_min": 29.8,
+          "bit_index": 14
+        },
+        {
+          "player_id": 953,
+          "full_name": "Lorenzen Wright",
+          "avg_min": 26.3,
+          "bit_index": 15
+        },
+        {
+          "player_id": 2031,
+          "full_name": "Stromile Swift",
+          "avg_min": 20.3,
+          "bit_index": 16
+        },
+        {
+          "player_id": 1715,
+          "full_name": "Jason Williams",
+          "avg_min": 30.0,
+          "bit_index": 17
+        },
+        {
+          "player_id": 1710,
+          "full_name": "Mike Bibby",
+          "avg_min": 37.9,
+          "bit_index": 18
+        },
+        {
+          "player_id": 1629634,
+          "full_name": "Brandon Clarke",
+          "avg_min": 20.9,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612761": {
+      "team_id": 1610612761,
+      "team_name": "Toronto Raptors",
+      "abbreviation": "TOR",
+      "base_off_rating": 111.8,
+      "base_def_rating": 118.1,
+      "base_net_rating": -6.3,
+      "roster": [
+        {
+          "player_id": 201942,
+          "full_name": "DeMar DeRozan",
+          "avg_min": 34.3,
+          "bit_index": 0
+        },
+        {
+          "player_id": 200768,
+          "full_name": "Kyle Lowry",
+          "avg_min": 35.0,
+          "bit_index": 1
+        },
+        {
+          "player_id": 2547,
+          "full_name": "Chris Bosh",
+          "avg_min": 36.9,
+          "bit_index": 2
+        },
+        {
+          "player_id": 1627783,
+          "full_name": "Pascal Siakam",
+          "avg_min": 31.2,
+          "bit_index": 3
+        },
+        {
+          "player_id": 2050,
+          "full_name": "Morris Peterson",
+          "avg_min": 29.3,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1713,
+          "full_name": "Vince Carter",
+          "avg_min": 37.8,
+          "bit_index": 5
+        },
+        {
+          "player_id": 101181,
+          "full_name": "Jose Calderon",
+          "avg_min": 28.2,
+          "bit_index": 6
+        },
+        {
+          "player_id": 1627832,
+          "full_name": "Fred VanVleet",
+          "avg_min": 29.2,
+          "bit_index": 7
+        },
+        {
+          "player_id": 200745,
+          "full_name": "Andrea Bargnani",
+          "avg_min": 30.2,
+          "bit_index": 8
+        },
+        {
+          "player_id": 202685,
+          "full_name": "Jonas Valan\u010di\u016bnas",
+          "avg_min": 25.1,
+          "bit_index": 9
+        },
+        {
+          "player_id": 1541,
+          "full_name": "Alvin Williams",
+          "avg_min": 28.6,
+          "bit_index": 10
+        },
+        {
+          "player_id": 1628384,
+          "full_name": "OG Anunoby",
+          "avg_min": 28.9,
+          "bit_index": 11
+        },
+        {
+          "player_id": 101161,
+          "full_name": "Amir Johnson",
+          "avg_min": 25.3,
+          "bit_index": 12
+        },
+        {
+          "player_id": 213,
+          "full_name": "Antonio Davis",
+          "avg_min": 35.2,
+          "bit_index": 13
+        },
+        {
+          "player_id": 57,
+          "full_name": "Doug Christie",
+          "avg_min": 34.6,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1630567,
+          "full_name": "Scottie Barnes",
+          "avg_min": 34.5,
+          "bit_index": 15
+        },
+        {
+          "player_id": 203082,
+          "full_name": "Terrence Ross",
+          "avg_min": 23.0,
+          "bit_index": 16
+        },
+        {
+          "player_id": 757,
+          "full_name": "Damon Stoudamire",
+          "avg_min": 41.1,
+          "bit_index": 17
+        },
+        {
+          "player_id": 1626181,
+          "full_name": "Norman Powell",
+          "avg_min": 19.6,
+          "bit_index": 18
+        },
+        {
+          "player_id": 1515,
+          "full_name": "Anthony Parker",
+          "avg_min": 32.9,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612759": {
+      "team_id": 1610612759,
+      "team_name": "San Antonio Spurs",
+      "abbreviation": "SAN",
+      "base_off_rating": 109.3,
+      "base_def_rating": 115.6,
+      "base_net_rating": -6.4,
+      "roster": [
+        {
+          "player_id": 1495,
+          "full_name": "Tim Duncan",
+          "avg_min": 34.5,
+          "bit_index": 0
+        },
+        {
+          "player_id": 2225,
+          "full_name": "Tony Parker",
+          "avg_min": 31.6,
+          "bit_index": 1
+        },
+        {
+          "player_id": 764,
+          "full_name": "David Robinson",
+          "avg_min": 34.7,
+          "bit_index": 2
+        },
+        {
+          "player_id": 1938,
+          "full_name": "Manu Ginobili",
+          "avg_min": 25.8,
+          "bit_index": 3
+        },
+        {
+          "player_id": 76804,
+          "full_name": "George Gervin",
+          "avg_min": 34.8,
+          "bit_index": 4
+        },
+        {
+          "player_id": 251,
+          "full_name": "Sean Elliott",
+          "avg_min": 33.1,
+          "bit_index": 5
+        },
+        {
+          "player_id": 422,
+          "full_name": "Avery Johnson",
+          "avg_min": 31.4,
+          "bit_index": 6
+        },
+        {
+          "player_id": 1477,
+          "full_name": "Bruce Bowen",
+          "avg_min": 30.1,
+          "bit_index": 7
+        },
+        {
+          "player_id": 77615,
+          "full_name": "Mike Mitchell",
+          "avg_min": 32.8,
+          "bit_index": 8
+        },
+        {
+          "player_id": 201980,
+          "full_name": "Danny Green",
+          "avg_min": 25.7,
+          "bit_index": 9
+        },
+        {
+          "player_id": 202695,
+          "full_name": "Kawhi Leonard",
+          "avg_min": 30.9,
+          "bit_index": 10
+        },
+        {
+          "player_id": 201988,
+          "full_name": "Patty Mills",
+          "avg_min": 20.3,
+          "bit_index": 11
+        },
+        {
+          "player_id": 335,
+          "full_name": "Willie Anderson",
+          "avg_min": 29.7,
+          "bit_index": 12
+        },
+        {
+          "player_id": 77633,
+          "full_name": "Johnny Moore",
+          "avg_min": 25.9,
+          "bit_index": 13
+        },
+        {
+          "player_id": 219,
+          "full_name": "Vinny Del Negro",
+          "avg_min": 28.8,
+          "bit_index": 14
+        },
+        {
+          "player_id": 77756,
+          "full_name": "Mark Olberding",
+          "avg_min": 26.5,
+          "bit_index": 15
+        },
+        {
+          "player_id": 200746,
+          "full_name": "LaMarcus Aldridge",
+          "avg_min": 32.3,
+          "bit_index": 16
+        },
+        {
+          "player_id": 600014,
+          "full_name": "Artis Gilmore",
+          "avg_min": 32.8,
+          "bit_index": 17
+        },
+        {
+          "player_id": 926,
+          "full_name": "Alvin Robertson",
+          "avg_min": 32.2,
+          "bit_index": 18
+        },
+        {
+          "player_id": 77246,
+          "full_name": "Larry Kenon",
+          "avg_min": 36.3,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612757": {
+      "team_id": 1610612757,
+      "team_name": "Portland Trail Blazers",
+      "abbreviation": "POR",
+      "base_off_rating": 107.6,
+      "base_def_rating": 116.6,
+      "base_net_rating": -9.0,
+      "roster": [
+        {
+          "player_id": 17,
+          "full_name": "Clyde Drexler",
+          "avg_min": 34.5,
+          "bit_index": 0
+        },
+        {
+          "player_id": 203081,
+          "full_name": "Damian Lillard",
+          "avg_min": 36.6,
+          "bit_index": 1
+        },
+        {
+          "player_id": 345,
+          "full_name": "Terry Porter",
+          "avg_min": 32.1,
+          "bit_index": 2
+        },
+        {
+          "player_id": 760,
+          "full_name": "Jerome Kersey",
+          "avg_min": 26.6,
+          "bit_index": 3
+        },
+        {
+          "player_id": 200746,
+          "full_name": "LaMarcus Aldridge",
+          "avg_min": 35.7,
+          "bit_index": 4
+        },
+        {
+          "player_id": 361,
+          "full_name": "Clifford Robinson",
+          "avg_min": 30.3,
+          "bit_index": 5
+        },
+        {
+          "player_id": 739,
+          "full_name": "Rasheed Wallace",
+          "avg_min": 35.7,
+          "bit_index": 6
+        },
+        {
+          "player_id": 203468,
+          "full_name": "CJ McCollum",
+          "avg_min": 31.8,
+          "bit_index": 7
+        },
+        {
+          "player_id": 433,
+          "full_name": "Buck Williams",
+          "avg_min": 31.2,
+          "bit_index": 8
+        },
+        {
+          "player_id": 78331,
+          "full_name": "Mychal Thompson",
+          "avg_min": 34.3,
+          "bit_index": 9
+        },
+        {
+          "player_id": 77819,
+          "full_name": "Jim Paxson",
+          "avg_min": 29.1,
+          "bit_index": 10
+        },
+        {
+          "player_id": 757,
+          "full_name": "Damon Stoudamire",
+          "avg_min": 32.9,
+          "bit_index": 11
+        },
+        {
+          "player_id": 77844,
+          "full_name": "Geoff Petrie",
+          "avg_min": 37.6,
+          "bit_index": 12
+        },
+        {
+          "player_id": 404,
+          "full_name": "Kevin Duckworth",
+          "avg_min": 27.9,
+          "bit_index": 13
+        },
+        {
+          "player_id": 201587,
+          "full_name": "Nicolas Batum",
+          "avg_min": 30.8,
+          "bit_index": 14
+        },
+        {
+          "player_id": 78520,
+          "full_name": "Sidney Wicks",
+          "avg_min": 38.8,
+          "bit_index": 15
+        },
+        {
+          "player_id": 78245,
+          "full_name": "Larry Steele",
+          "avg_min": 24.0,
+          "bit_index": 16
+        },
+        {
+          "player_id": 76895,
+          "full_name": "Bob Gross",
+          "avg_min": 25.3,
+          "bit_index": 17
+        },
+        {
+          "player_id": 202083,
+          "full_name": "Wesley Matthews",
+          "avg_min": 34.1,
+          "bit_index": 18
+        },
+        {
+          "player_id": 717,
+          "full_name": "Arvydas Sabonis",
+          "avg_min": 24.6,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612766": {
+      "team_id": 1610612766,
+      "team_name": "Charlotte Hornets",
+      "abbreviation": "CHH",
+      "base_off_rating": 108.6,
+      "base_def_rating": 119.2,
+      "base_net_rating": -10.6,
+      "roster": [
+        {
+          "player_id": 202689,
+          "full_name": "Kemba Walker",
+          "avg_min": 34.1,
+          "bit_index": 0
+        },
+        {
+          "player_id": 177,
+          "full_name": "Muggsy Bogues",
+          "avg_min": 31.4,
+          "bit_index": 1
+        },
+        {
+          "player_id": 209,
+          "full_name": "Dell Curry",
+          "avg_min": 25.0,
+          "bit_index": 2
+        },
+        {
+          "player_id": 2222,
+          "full_name": "Gerald Wallace",
+          "avg_min": 36.9,
+          "bit_index": 3
+        },
+        {
+          "player_id": 913,
+          "full_name": "Larry Johnson",
+          "avg_min": 38.9,
+          "bit_index": 4
+        },
+        {
+          "player_id": 133,
+          "full_name": "David Wesley",
+          "avg_min": 36.2,
+          "bit_index": 5
+        },
+        {
+          "player_id": 101109,
+          "full_name": "Raymond Felton",
+          "avg_min": 34.9,
+          "bit_index": 6
+        },
+        {
+          "player_id": 1628970,
+          "full_name": "Miles Bridges",
+          "avg_min": 30.8,
+          "bit_index": 7
+        },
+        {
+          "player_id": 101107,
+          "full_name": "Marvin Williams",
+          "avg_min": 27.2,
+          "bit_index": 8
+        },
+        {
+          "player_id": 2731,
+          "full_name": "Emeka Okafor",
+          "avg_min": 34.0,
+          "bit_index": 9
+        },
+        {
+          "player_id": 203077,
+          "full_name": "Michael Kidd-Gilchrist",
+          "avg_min": 25.1,
+          "bit_index": 10
+        },
+        {
+          "player_id": 201945,
+          "full_name": "Gerald Henderson",
+          "avg_min": 27.6,
+          "bit_index": 11
+        },
+        {
+          "player_id": 203469,
+          "full_name": "Cody Zeller",
+          "avg_min": 22.6,
+          "bit_index": 12
+        },
+        {
+          "player_id": 779,
+          "full_name": "Glen Rice",
+          "avg_min": 40.9,
+          "bit_index": 13
+        },
+        {
+          "player_id": 1626179,
+          "full_name": "Terry Rozier",
+          "avg_min": 34.5,
+          "bit_index": 14
+        },
+        {
+          "player_id": 193,
+          "full_name": "Anthony Mason",
+          "avg_min": 40.1,
+          "bit_index": 15
+        },
+        {
+          "player_id": 201587,
+          "full_name": "Nicolas Batum",
+          "avg_min": 32.1,
+          "bit_index": 16
+        },
+        {
+          "player_id": 202687,
+          "full_name": "Bismack Biyombo",
+          "avg_min": 19.9,
+          "bit_index": 17
+        },
+        {
+          "player_id": 1629023,
+          "full_name": "P.J. Washington",
+          "avg_min": 30.1,
+          "bit_index": 18
+        },
+        {
+          "player_id": 2564,
+          "full_name": "Boris Diaw",
+          "avg_min": 34.4,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612764": {
+      "team_id": 1610612764,
+      "team_name": "Chicago Packers",
+      "abbreviation": "CHP",
+      "base_off_rating": 110.2,
+      "base_def_rating": 118.9,
+      "base_net_rating": -8.7,
+      "roster": [
+        {
+          "player_id": 78392,
+          "full_name": "Wes Unseld",
+          "avg_min": 34.6,
+          "bit_index": 0
+        },
+        {
+          "player_id": 76979,
+          "full_name": "Elvin Hayes",
+          "avg_min": 39.3,
+          "bit_index": 1
+        },
+        {
+          "player_id": 203078,
+          "full_name": "Bradley Beal",
+          "avg_min": 35.0,
+          "bit_index": 2
+        },
+        {
+          "player_id": 202322,
+          "full_name": "John Wall",
+          "avg_min": 36.0,
+          "bit_index": 3
+        },
+        {
+          "player_id": 76386,
+          "full_name": "Phil Chenier",
+          "avg_min": 32.8,
+          "bit_index": 4
+        },
+        {
+          "player_id": 76091,
+          "full_name": "Greg Ballard",
+          "avg_min": 28.4,
+          "bit_index": 5
+        },
+        {
+          "player_id": 117,
+          "full_name": "Jeff Malone",
+          "avg_min": 32.8,
+          "bit_index": 6
+        },
+        {
+          "player_id": 436,
+          "full_name": "Juwan Howard",
+          "avg_min": 38.5,
+          "bit_index": 7
+        },
+        {
+          "player_id": 1712,
+          "full_name": "Antawn Jamison",
+          "avg_min": 38.8,
+          "bit_index": 8
+        },
+        {
+          "player_id": 2240,
+          "full_name": "Gilbert Arenas",
+          "avg_min": 39.4,
+          "bit_index": 9
+        },
+        {
+          "player_id": 2217,
+          "full_name": "Brendan Haywood",
+          "avg_min": 24.6,
+          "bit_index": 10
+        },
+        {
+          "player_id": 76887,
+          "full_name": "Kevin Grevey",
+          "avg_min": 24.9,
+          "bit_index": 11
+        },
+        {
+          "player_id": 265,
+          "full_name": "Harvey Grant",
+          "avg_min": 26.3,
+          "bit_index": 12
+        },
+        {
+          "player_id": 101162,
+          "full_name": "Marcin Gortat",
+          "avg_min": 30.0,
+          "bit_index": 13
+        },
+        {
+          "player_id": 384,
+          "full_name": "Calbert Cheaney",
+          "avg_min": 31.0,
+          "bit_index": 14
+        },
+        {
+          "player_id": 77463,
+          "full_name": "Jack Marin",
+          "avg_min": 25.6,
+          "bit_index": 15
+        },
+        {
+          "player_id": 279,
+          "full_name": "Charles Jones",
+          "avg_min": 21.2,
+          "bit_index": 16
+        },
+        {
+          "player_id": 77966,
+          "full_name": "Mike Riordan",
+          "avg_min": 27.2,
+          "bit_index": 17
+        },
+        {
+          "player_id": 2406,
+          "full_name": "Caron Butler",
+          "avg_min": 38.6,
+          "bit_index": 18
+        },
+        {
+          "player_id": 77411,
+          "full_name": "Kevin Loughery",
+          "avg_min": 19.2,
+          "bit_index": 19
+        }
+      ]
+    },
+    "1610612765": {
+      "team_id": 1610612765,
+      "team_name": "Ft. Wayne Zollner Pistons",
+      "abbreviation": "FTW",
+      "base_off_rating": 109.0,
+      "base_def_rating": 118.0,
+      "base_net_rating": -9.0,
+      "roster": [
+        {
+          "player_id": 78318,
+          "full_name": "Isiah Thomas",
+          "avg_min": 36.4,
+          "bit_index": 0
+        },
+        {
+          "player_id": 247,
+          "full_name": "Joe Dumars",
+          "avg_min": 34.7,
+          "bit_index": 1
+        },
+        {
+          "player_id": 100263,
+          "full_name": "Bill Laimbeer",
+          "avg_min": 32.7,
+          "bit_index": 2
+        },
+        {
+          "player_id": 2419,
+          "full_name": "Tayshaun Prince",
+          "avg_min": 33.6,
+          "bit_index": 3
+        },
+        {
+          "player_id": 1888,
+          "full_name": "Richard Hamilton",
+          "avg_min": 35.3,
+          "bit_index": 4
+        },
+        {
+          "player_id": 1112,
+          "full_name": "Ben Wallace",
+          "avg_min": 33.5,
+          "bit_index": 5
+        },
+        {
+          "player_id": 77167,
+          "full_name": "Vinnie Johnson",
+          "avg_min": 25.1,
+          "bit_index": 6
+        },
+        {
+          "player_id": 600005,
+          "full_name": "Bob Lanier",
+          "avg_min": 29.8,
+          "bit_index": 7
+        },
+        {
+          "player_id": 1497,
+          "full_name": "Chauncey Billups",
+          "avg_min": 34.6,
+          "bit_index": 8
+        },
+        {
+          "player_id": 283,
+          "full_name": "Lindsey Hunter",
+          "avg_min": 25.0,
+          "bit_index": 9
+        },
+        {
+          "player_id": 23,
+          "full_name": "Dennis Rodman",
+          "avg_min": 29.1,
+          "bit_index": 10
+        },
+        {
+          "player_id": 203083,
+          "full_name": "Andre Drummond",
+          "avg_min": 31.1,
+          "bit_index": 11
+        },
+        {
+          "player_id": 255,
+          "full_name": "Grant Hill",
+          "avg_min": 39.0,
+          "bit_index": 12
+        },
+        {
+          "player_id": 739,
+          "full_name": "Rasheed Wallace",
+          "avg_min": 33.0,
+          "bit_index": 13
+        },
+        {
+          "player_id": 76166,
+          "full_name": "Dave Bing",
+          "avg_min": 23.9,
+          "bit_index": 14
+        },
+        {
+          "player_id": 1381,
+          "full_name": "John Long",
+          "avg_min": 26.3,
+          "bit_index": 15
+        },
+        {
+          "player_id": 78390,
+          "full_name": "Terry Tyler",
+          "avg_min": 27.1,
+          "bit_index": 16
+        },
+        {
+          "player_id": 201155,
+          "full_name": "Rodney Stuckey",
+          "avg_min": 28.9,
+          "bit_index": 17
+        },
+        {
+          "player_id": 371,
+          "full_name": "Terry Mills",
+          "avg_min": 27.3,
+          "bit_index": 18
+        },
+        {
+          "player_id": 78369,
+          "full_name": "Kelly Tripucka",
+          "avg_min": 34.6,
+          "bit_index": 19
+        }
+      ]
+    }
+  }
+}

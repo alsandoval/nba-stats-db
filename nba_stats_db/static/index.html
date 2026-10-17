@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NBA Stats Database & Analytics Platform</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="logo">
+        <i class="fa-solid fa-basketball fa-spin-pulse" style="--fa-animation-duration: 4s;"></i>
+        <div class="logo-text">
+          <span class="brand">NBA</span><span class="subbrand">StatsDB</span>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <button class="nav-btn active" data-target="dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+        <button class="nav-btn" data-target="player-compare"><i class="fa-solid fa-user-group"></i> Player Comparison</button>
+        <button class="nav-btn" data-target="team-compare"><i class="fa-solid fa-shield-halved"></i> Team Comparison</button>
+        <button class="nav-btn" data-target="player-explorer"><i class="fa-solid fa-magnifying-glass"></i> Player Explorer</button>
+        <button class="nav-btn" data-target="leaders"><i class="fa-solid fa-trophy"></i> Leaders</button>
+        <button class="nav-btn" data-target="ai-chart-studio"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Chart Studio</button>
+        <button class="nav-btn" data-target="capology"><i class="fa-solid fa-coins"></i> Capology & Trade Machine</button>
+        <button class="nav-btn" data-target="sql-playground"><i class="fa-solid fa-terminal"></i> SQL Playground</button>
+        <button class="nav-btn" data-target="endpoints-explorer"><i class="fa-solid fa-network-wired"></i> API Endpoints (138)</button>
+      </nav>
+      <div class="nav-status" id="db-status-badge">
+        <span class="status-dot online"></span>
+        <span id="db-status-text">Connecting...</span>
+      </div>
+    </header>
+    
+    <!-- Real-time Live Scores Ticker Bar -->
+    <div class="live-ticker-bar" id="live-ticker-bar">
+      <div class="live-ticker-lead">
+        <div class="live-indicator-wrap">
+          <span class="live-indicator-dot" id="live-indicator-dot"></span>
+          <span class="live-indicator-label" id="live-indicator-label">NBA LIVE</span>
+        </div>
+        <div class="live-ticker-arrows">
+          <button class="ticker-arrow-btn" id="ticker-arrow-left" title="Scroll Left"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="ticker-arrow-btn" id="ticker-arrow-right" title="Scroll Right"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+
+      <div class="live-ticker-track" id="live-ticker-track">
+        <div class="live-ticker-empty" id="live-ticker-placeholder">
+          <i class="fa-solid fa-circle-notch fa-spin"></i> Checking live scores...
+        </div>
+      </div>
+
+      <div class="live-ticker-toolbar">
+        <button class="live-tool-btn" id="btn-live-refresh" title="Force Refresh Live Scores">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>Refresh</span>
+        </button>
+        <button class="live-tool-btn" id="btn-live-scheduler" title="Live Schedule Polling Daemon">
+          <i class="fa-solid fa-clock"></i>
+          <span id="scheduler-badge-text">Daemon: ON</span>
+        </button>
+        <button class="live-tool-btn" id="btn-live-demo" title="Toggle Offseason Demo Scores">
+          <i class="fa-solid fa-flask"></i>
+          <span id="demo-badge-text">Demo</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="content-body">
+
+        <!-- Visual Historical Download Tracker Card -->
+        <div class="glass-card mb-4" id="download-tracker-card">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="pulse-indicator" id="tracker-pulse"></span>
+              <i class="fa-solid fa-cloud-arrow-down"></i> Historical Dataset Download Tracker (1946 - 2025)
+            </div>
+            <div class="controls-group">
+              <span class="badge badge-accent" id="tracker-status-badge">Downloading...</span>
+              <span class="badge badge-outline" id="tracker-percent-badge">0%</span>
+            </div>
+          </div>
+          <div class="card-content">
+            <!-- Progress Bar -->
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" id="tracker-progress-fill" style="width: 0%;"></div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="tracker-meta-bar">
+              <div class="meta-item">
+                <span class="meta-label">Seasons Ingested:</span>
+                <strong id="tracker-seasons-text">0 / 79 Seasons</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Currently Downloading:</span>
+                <strong id="tracker-current-season" class="text-orange">-</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Historical Boxscores:</span>
+                <strong id="tracker-boxscores-text">0</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Database File:</span>
+                <strong id="tracker-dbsize-text">0 MB</strong>
+              </div>
+            </div>
+
+            <!-- Seasons Grid Matrix -->
+            <div class="seasons-matrix-header">
+              <span>All 79 Historical Seasons (Reverse Chronological Order):</span>
+              <span class="legend-text"><span class="dot-legend green"></span> Ingested <span class="dot-legend yellow"></span> Current <span class="dot-legend gray"></span> Queued</span>
+            </div>
+            <div class="seasons-matrix-scroll" id="seasons-matrix-container"></div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon orange"><i class="fa-solid fa-basketball"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Total Games</span>
+              <span class="kpi-value" id="kpi-games">-</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon blue"><i class="fa-solid fa-file-lines"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Player Boxscores</span>
+              <span class="kpi-value" id="kpi-boxscores">-</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon green"><i class="fa-solid fa-users"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Total Players</span>
+              <span class="kpi-value" id="kpi-players">-</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon purple"><i class="fa-solid fa-database"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Database Size</span>
+              <span class="kpi-value" id="kpi-size">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Standings & Scoring Leaders -->
+        <div class="two-col-grid">
+          <!-- Standings Card -->
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="header-title">
+                <i class="fa-solid fa-list-ol"></i> Conference Standings
+              </div>
+              <div class="controls-group">
+                <select id="standings-season-select" class="dropdown-small"></select>
+                <div class="pill-toggle">
+                  <button class="pill-btn active" data-conf="East">East</button>
+                  <button class="pill-btn" data-conf="West">West</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-content table-container">
+              <table class="data-table" id="standings-table">
+                <thead>
+                  <tr>
+                    <th>Seed</th>
+                    <th>Team</th>
+                    <th>W</th>
+                    <th>L</th>
+                    <th>Win%</th>
+                    <th>Home</th>
+                    <th>Road</th>
+                    <th>L10</th>
+                    <th>Diff</th>
+                  </tr>
+                </thead>
+                <tbody><tr><td colspan="9" class="text-center">Loading standings...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Top Scorers Card -->
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="header-title">
+                <i class="fa-solid fa-fire"></i> Top Scorers
+              </div>
+              <div class="controls-group">
+                <select id="scorers-season-select" class="dropdown-small"></select>
+              </div>
+            </div>
+            <div class="card-content table-container">
+              <table class="data-table" id="dashboard-scorers-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Team</th>
+                    <th>GP</th>
+                    <th>PPG</th>
+                    <th>RPG</th>
+                    <th>APG</th>
+                    <th>FG%</th>
+                    <th>3P%</th>
+                  </tr>
+                </thead>
+                <tbody><tr><td colspan="9" class="text-center">Loading scorers...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Games Grid -->
+        <div class="glass-card mt-4">
+          <div class="card-header">
+            <div class="header-title">
+              <i class="fa-solid fa-calendar-day"></i> Recent Games & Final Scores
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="games-ticker-grid" id="recent-games-container">
+              <div class="text-muted">Loading games...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: PLAYER COMPARISON -->
+      <section id="player-compare" class="tab-pane">
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="header-title">
+              <i class="fa-solid fa-scale-balanced"></i> Head-to-Head Player Comparison
+            </div>
+            <div class="controls-group">
+              <select id="pcompare-season-select" class="dropdown-small"></select>
+            </div>
+          </div>
+          <div class="card-content">
+            <!-- Preset Quick Selections -->
+            <div class="presets-row">
+              <span class="preset-label">Quick Matchups:</span>
+              <button class="preset-chip" onclick="app.setPlayerComparison('Luka Doncic', 'Shai Gilgeous-Alexander')">Luka vs. Shai</button>
+              <button class="preset-chip" onclick="app.setPlayerComparison('LeBron James', 'Stephen Curry')">LeBron vs. Curry</button>
+              <button class="preset-chip" onclick="app.setPlayerComparison('Giannis Antetokounmpo', 'Nikola Jokic')">Giannis vs. Jokić</button>
+              <button class="preset-chip" onclick="app.setPlayerComparison('Jayson Tatum', 'Jaylen Brown')">Tatum vs. Brown</button>
+              <button class="preset-chip" onclick="app.setPlayerComparison('Joel Embiid', 'Anthony Davis')">Embiid vs. AD</button>
+            </div>
+
+            <!-- Search Inputs -->
+            <div class="compare-search-grid">
+              <div class="search-input-box">
+                <label><i class="fa-solid fa-user"></i> Player 1</label>
+                <div class="autocomplete-wrap">
+                  <input type="text" id="pcompare-input-1" placeholder="Type player name (e.g. Luka Doncic)..." value="Luka Doncic">
+                  <div class="autocomplete-list" id="pcompare-list-1"></div>
+                </div>
+              </div>
+              <div class="vs-divider">VS</div>
+              <div class="search-input-box">
+                <label><i class="fa-solid fa-user"></i> Player 2</label>
+                <div class="autocomplete-wrap">
+                  <input type="text" id="pcompare-input-2" placeholder="Type player name (e.g. Shai Gilgeous-Alexander)..." value="Shai Gilgeous-Alexander">
+                  <div class="autocomplete-list" id="pcompare-list-2"></div>
+                </div>
+              </div>
+              <button class="btn btn-primary" id="btn-run-pcompare"><i class="fa-solid fa-bolt"></i> Compare</button>
+            </div>
+
+            <!-- Comparison Results Container -->
+            <div id="pcompare-results" class="comparison-results-grid">
+              <!-- Cards + Stats Column -->
+              <div class="pcompare-stats-col">
+                <div class="cards-header-row" id="pcompare-cards-header"></div>
+                <div class="stats-comparison-table-wrap">
+                  <table class="compare-table" id="pcompare-table">
+                    <thead>
+                      <tr>
+                        <th id="p1-header-name">Player 1</th>
+                        <th>Metric</th>
+                        <th id="p2-header-name">Player 2</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pcompare-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Visual Radar / Bar Column -->
+              <div class="pcompare-chart-col">
+                <div class="chart-box">
+                  <h4><i class="fa-solid fa-chart-pie"></i> Skill Radar Comparison</h4>
+                  <canvas id="pcompare-radar-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Direct Head-to-Head Games Row -->
+            <div class="mt-4" id="pcompare-h2h-section">
+              <div class="subcard-header">
+                <h4><i class="fa-solid fa-handshake-angle"></i> Direct Games Against Each Other</h4>
+                <span class="badge" id="h2h-record-badge">0-0</span>
+              </div>
+              <div class="table-container">
+                <table class="data-table" id="pcompare-h2h-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Matchup</th>
+                      <th id="h2h-p1-label">Player 1 Line</th>
+                      <th id="h2h-p2-label">Player 2 Line</th>
+                      <th>Result</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pcompare-h2h-tbody">
+                    <tr><td colspan="5" class="text-center">Select players to view head-to-head records.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: TEAM COMPARISON -->
+      <section id="team-compare" class="tab-pane">
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="header-title">
+              <i class="fa-solid fa-shield-halved"></i> Team Comparison & Match History
+            </div>
+            <div class="controls-group">
+              <select id="tcompare-season-select" class="dropdown-small"></select>
+            </div>
+          </div>
+          <div class="card-content">
+            <!-- Preset Quick Selections -->
+            <div class="presets-row">
+              <span class="preset-label">Quick Rivalries:</span>
+              <button class="preset-chip" onclick="app.setTeamComparison('BOS', 'DAL')">Celtics vs. Mavericks</button>
+              <button class="preset-chip" onclick="app.setTeamComparison('DEN', 'MIN')">Nuggets vs. Timberwolves</button>
+              <button class="preset-chip" onclick="app.setTeamComparison('LAL', 'GSW')">Lakers vs. Warriors</button>
+              <button class="preset-chip" onclick="app.setTeamComparison('MIL', 'IND')">Bucks vs. Pacers</button>
+              <button class="preset-chip" onclick="app.setTeamComparison('BOS', 'NYK')">Celtics vs. Knicks</button>
+            </div>
+
+            <div class="compare-search-grid">
+              <div class="search-input-box">
+                <label>Team 1</label>
+                <select id="tcompare-select-1" class="dropdown-input"></select>
+              </div>
+              <div class="vs-divider">VS</div>
+              <div class="search-input-box">
+                <label>Team 2</label>
+                <select id="tcompare-select-2" class="dropdown-input"></select>
+              </div>
+              <button class="btn btn-primary" id="btn-run-tcompare"><i class="fa-solid fa-bolt"></i> Compare</button>
+            </div>
+
+            <!-- Team Results -->
+            <div class="comparison-results-grid mt-4">
+              <div class="pcompare-stats-col">
+                <table class="compare-table" id="tcompare-table">
+                  <thead>
+                    <tr>
+                      <th id="t1-header-name">Team 1</th>
+                      <th>Metric</th>
+                      <th id="t2-header-name">Team 2</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tcompare-tbody"></tbody>
+                </table>
+              </div>
+              <div class="pcompare-chart-col">
+                <div class="chart-box">
+                  <h4><i class="fa-solid fa-chart-column"></i> Rating & Efficiency Breakdown</h4>
+                  <canvas id="tcompare-bar-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Head-to-Head Games -->
+            <div class="mt-4">
+              <div class="subcard-header">
+                <h4><i class="fa-solid fa-list-check"></i> Head-to-Head Match History</h4>
+                <span class="badge" id="tcompare-h2h-badge">0-0</span>
+              </div>
+              <div class="table-container">
+                <table class="data-table" id="tcompare-h2h-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Matchup</th>
+                      <th>Home PTS</th>
+                      <th>Away PTS</th>
+                      <th>Winner</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tcompare-h2h-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4: PLAYER EXPLORER -->
+      <section id="player-explorer" class="tab-pane">
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="header-title">
+              <i class="fa-solid fa-magnifying-glass-chart"></i> Player Profile & Career Inspector
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="player-search-bar">
+              <div class="autocomplete-wrap flex-1">
+                <input type="text" id="pexplore-input" placeholder="Search any NBA player (e.g. Nikola Jokic, Stephen Curry, LeBron James)..." value="Nikola Jokic">
+                <div class="autocomplete-list" id="pexplore-list"></div>
+              </div>
+              <button class="btn btn-primary" id="btn-run-pexplore"><i class="fa-solid fa-search"></i> Inspect</button>
+            </div>
+
+            <!-- Profile Info Banner -->
+            <div class="player-profile-banner" id="player-banner">
+              <div class="player-avatar-circle" id="player-avatar-initials">NJ</div>
+              <div class="player-banner-meta">
+                <h2 id="player-banner-name">Nikola Jokic</h2>
+                <div class="tags-row" id="player-banner-tags">
+                  <span class="tag-pill" id="player-tag-team">Denver Nuggets</span>
+                  <span class="tag-pill" id="player-tag-status">Active</span>
+                  <span class="tag-pill" id="player-tag-years">Years: 2015 - Present</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scoring Trend Line Chart -->
+            <div class="chart-box mt-4">
+              <h4><i class="fa-solid fa-chart-line"></i> Recent Games Output (Points / Rebounds / Assists)</h4>
+              <canvas id="player-trend-chart" style="max-height: 280px;"></canvas>
+            </div>
+
+            <!-- Season Averages Table -->
+            <div class="mt-4">
+              <h4><i class="fa-solid fa-calendar-check"></i> Season Averages</h4>
+              <div class="table-container">
+                <table class="data-table" id="player-seasons-table">
+                  <thead>
+                    <tr>
+                      <th>Season</th>
+                      <th>Type</th>
+                      <th>Team</th>
+                      <th>GP</th>
+                      <th>MPG</th>
+                      <th>PPG</th>
+                      <th>RPG</th>
+                      <th>APG</th>
+                      <th>SPG</th>
+                      <th>BPG</th>
+                      <th>FG%</th>
+                      <th>3P%</th>
+                      <th>FT%</th>
+                      <th>+/-</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Recent Game Logs Table -->
+            <div class="mt-4">
+              <h4><i class="fa-solid fa-clock-rotate-left"></i> Recent Game Logs</h4>
+              <div class="table-container">
+                <table class="data-table" id="player-gamelogs-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Matchup</th>
+                      <th>W/L</th>
+                      <th>MIN</th>
+                      <th>PTS</th>
+                      <th>REB</th>
+                      <th>AST</th>
+                      <th>STL</th>
+                      <th>BLK</th>
+                      <th>FGM/A</th>
+                      <th>FG%</th>
+                      <th>3PM/A</th>
+                      <th>+/-</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5: LEADERBOARDS -->
+      <section id="leaders" class="tab-pane">
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="header-title">
+              <i class="fa-solid fa-trophy"></i> Statistical Leaderboards
+            </div>
+            <div class="controls-group">
+              <select id="leaders-season-select" class="dropdown-small"></select>
+              <select id="leaders-type-select" class="dropdown-small">
+                <option value="Regular Season">Regular Season</option>
+                <option value="Playoffs">Playoffs</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-content">
+            <!-- Category Pills -->
+            <div class="category-pills" id="leaders-cat-pills">
+              <button class="cat-pill active" data-cat="pts">Points (PPG)</button>
+              <button class="cat-pill" data-cat="reb">Rebounds (RPG)</button>
+              <button class="cat-pill" data-cat="ast">Assists (APG)</button>
+              <button class="cat-pill" data-cat="stl">Steals (SPG)</button>
+              <button class="cat-pill" data-cat="blk">Blocks (BPG)</button>
+              <button class="cat-pill" data-cat="fg3m">3-Pointers Made</button>
+              <button class="cat-pill" data-cat="fg_pct">Field Goal %</button>
+              <button class="cat-pill" data-cat="fg3_pct">3-Point %</button>
+              <button class="cat-pill" data-cat="ts_pct">True Shooting %</button>
+              <button class="cat-pill" data-cat="net_rating">Net Rating</button>
+              <button class="cat-pill" data-cat="pie">Impact (PIE%)</button>
+            </div>
+
+            <div class="table-container mt-4">
+              <table class="data-table" id="leaders-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Team</th>
+                    <th>GP</th>
+                    <th>MPG</th>
+                    <th id="leader-cat-header">PPG</th>
+                    <th>PPG</th>
+                    <th>RPG</th>
+                    <th>APG</th>
+                    <th>FG%</th>
+                    <th>3P%</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6: SQL PLAYGROUND -->
+      <section id="sql-playground" class="tab-pane">
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="header-title">
+              <i class="fa-solid fa-terminal"></i> Interactive SQL Query Playground
+            </div>
+            <div class="controls-group">
+              <select id="sql-templates-select" class="dropdown-input">
+                <option value="">-- Load Sample Query Template --</option>
+                <option value="triple_doubles">All Triple-Doubles in 2023-24</option>
+                <option value="high_scores">Single-Game 50+ Point Performances</option>
+                <option value="best_3pt_teams">Best 3-Point Shooting Teams</option>
+                <option value="clutch_home">Highest Winning Percentage at Home</option>
+                <option value="efficiency_kings">Players with TS% > 60% & 20+ PPG</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="sql-editor-wrap">
+              <textarea id="sql-input" class="sql-textarea" rows="5" spellcheck="false">SELECT 
+    p.full_name AS Player,
+    l.game_date AS Date,
+    l.matchup AS Matchup,
+    l.pts AS PTS,
+    l.reb AS REB,
+    l.ast AS AST,
+    ROUND(l.fg_pct * 100, 1) AS `FG%`
+FROM player_game_logs l
+JOIN players p ON l.player_id = p.player_id
+WHERE l.pts >= 50
+ORDER BY l.pts DESC;</textarea>
+            </div>
+            <div class="sql-actions-bar">
+              <button class="btn btn-primary" id="btn-run-sql"><i class="fa-solid fa-play"></i> Execute Query</button>
+              <button class="btn btn-outline" id="btn-export-csv"><i class="fa-solid fa-download"></i> Export CSV</button>
+              <span class="sql-meta-info" id="sql-status-text">Ready.</span>
+            </div>
+
+            <!-- Query Output Table -->
+            <div class="table-container mt-4" id="sql-results-container">
+              <table class="data-table" id="sql-output-table">
+                <thead><tr id="sql-thead-tr"></tr></thead>
+                <tbody id="sql-tbody">
+                  <tr><td class="text-center">Execute a query above to see live results.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 7: ALL NBA API ENDPOINTS EXPLORER -->
+      <section id="endpoints-explorer" class="tab-pane">
+        <!-- Live Download Tracker Banner for Endpoints -->
+        <div class="glass-card mb-4" id="ep-download-card" style="display: none;">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="pulse-indicator"></span>
+              <i class="fa-solid fa-cloud-arrow-down"></i> NBA API Endpoints Live Ingestion Runner
+            </div>
+            <div class="controls-group">
+              <span class="badge badge-accent" id="ep-download-status-badge">Downloading...</span>
+              <span class="badge badge-outline" id="ep-download-percent-badge">0%</span>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" id="ep-download-progress-fill" style="width: 0%;"></div>
+            </div>
+            <div class="tracker-meta-bar">
+              <div class="meta-item">
+                <span class="meta-label">Progress:</span>
+                <strong id="ep-progress-count">0 / 138</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Current Endpoint:</span>
+                <strong id="ep-progress-current" class="text-orange">-</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Succeeded:</span>
+                <strong id="ep-progress-succeeded" class="text-green">0</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Empty / Deprecated:</span>
+                <strong id="ep-progress-other">0</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Endpoints KPI Cards -->
+        <div class="kpi-grid mb-4">
+          <div class="kpi-card">
+            <div class="kpi-icon blue"><i class="fa-solid fa-network-wired"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Total Endpoints</span>
+              <span class="kpi-value" id="kpi-ep-total">138</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Downloaded / Active</span>
+              <span class="kpi-value" id="kpi-ep-succeeded">-</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon orange"><i class="fa-solid fa-database"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Endpoint Rows Stored</span>
+              <span class="kpi-value" id="kpi-ep-rows">-</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon red"><i class="fa-solid fa-table-cells"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">SQLite Tables</span>
+              <span class="kpi-value" id="kpi-ep-tables">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Actions Bar -->
+        <div class="glass-card mb-4">
+          <div class="card-content ep-controls-content">
+            <div class="ep-search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="ep-search-input" class="search-input" placeholder="Search 138 endpoints by name or description...">
+            </div>
+            <div class="ep-filter-row">
+              <div class="filter-chips-group" id="ep-category-chips">
+                <button class="chip active" data-category="ALL">All (138)</button>
+                <button class="chip" data-category="League & Standings">League & Standings</button>
+                <button class="chip" data-category="Player Analytics">Player Analytics</button>
+                <button class="chip" data-category="Team Analytics">Team Analytics</button>
+                <button class="chip" data-category="Box Scores & Play-by-Play">Box Scores</button>
+                <button class="chip" data-category="Hustle & Tracking">Hustle & Tracking</button>
+                <button class="chip" data-category="Draft & Combine">Draft & Combine</button>
+                <button class="chip" data-category="Historical & Franchise">All-Time</button>
+                <button class="chip" data-category="Live Feeds">Live Feeds</button>
+              </div>
+              <div class="ep-actions-right">
+                <select id="ep-status-filter" class="dropdown-input">
+                  <option value="ALL">Status: All</option>
+                  <option value="SUCCESS">Downloaded (Success)</option>
+                  <option value="EMPTY">Empty Dataset</option>
+                  <option value="DEPRECATED">Deprecated by NBA</option>
+                  <option value="PENDING">Pending</option>
+                </select>
+                <button class="btn btn-primary" id="btn-download-all-ep">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Download All Endpoints
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Endpoints Grid -->
+        <div class="ep-grid" id="ep-cards-container">
+          <!-- Dynamic Endpoint Cards will render here -->
+        </div>
+      </section>
+
+      <!-- SECTION 8: AI CHART STUDIO -->
+      <section id="ai-chart-studio" class="tab-pane">
+        <div class="ai-studio-container">
+          
+          <!-- LEFT PANEL: Conversation & Prompt Controls -->
+          <div class="ai-studio-chat-panel">
+            <div class="glass-card ai-chat-card">
+              <div class="card-header">
+                <div class="header-title">
+                  <i class="fa-solid fa-wand-magic-sparkles text-accent"></i> NBA AI Studio
+                </div>
+                <div class="controls-group">
+                  <button class="btn-icon" id="btn-ai-settings" title="AI Settings (API Key & Model)">
+                    <i class="fa-solid fa-gear"></i>
+                  </button>
+                  <button class="btn-icon" id="btn-clear-chat" title="Clear Conversation">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Preset Suggestion Chips -->
+              <div class="ai-presets-container">
+                <div class="ai-presets-label"><i class="fa-solid fa-bolt"></i> Sample Prompts:</div>
+                <div class="presets-scroll" id="ai-preset-chips">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+
+              <!-- Chat Message Stream -->
+              <div class="ai-chat-stream" id="ai-chat-stream">
+                <div class="ai-msg assistant">
+                  <div class="ai-msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                  <div class="ai-msg-body">
+                    <p><strong>Welcome to the NBA AI Chart Studio!</strong></p>
+                    <p>Ask any NBA question in natural language and I will query the database and construct interactive charts using our custom NBA Chart DSL.</p>
+                    <p class="ai-msg-hint">Try clicking one of the sample prompt chips above or type a request like: <em>"Compare the top 10 PGs this season by PPG and True Shooting %"</em>.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Chat Input Box -->
+              <div class="ai-chat-input-wrap">
+                <form id="ai-chat-form" class="ai-chat-form">
+                  <textarea 
+                    id="ai-prompt-input" 
+                    class="ai-textarea" 
+                    placeholder="Ask a question or request a chart (e.g. 'Compare top 10 PGs this season by PPG and TS%')..."
+                    rows="2"
+                  ></textarea>
+                  <div class="ai-input-actions">
+                    <span class="ai-status-hint" id="ai-status-hint"><i class="fa-solid fa-sparkles"></i> Powered by Gemini</span>
+                    <button type="submit" class="btn btn-primary btn-send" id="btn-ai-send">
+                      <i class="fa-solid fa-paper-plane"></i> <span>Send</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT PANEL: Chart Showcase & Data Inspector -->
+          <div class="ai-studio-display-panel">
+            <div class="glass-card ai-display-card">
+              
+              <!-- Toolbar -->
+              <div class="ai-chart-toolbar">
+                <div class="toolbar-left">
+                  <span class="toolbar-label"><i class="fa-solid fa-chart-simple"></i> Type:</span>
+                  <div class="chart-type-toggle" id="chart-type-selector">
+                    <button class="type-btn active" data-type="auto" title="Auto (Model Chosen)"><i class="fa-solid fa-sparkles"></i> Auto</button>
+                    <button class="type-btn" data-type="bar" title="Bar Chart"><i class="fa-solid fa-chart-column"></i> Bar</button>
+                    <button class="type-btn" data-type="horizontalBar" title="Horizontal Bar"><i class="fa-solid fa-bars-progress"></i> H-Bar</button>
+                    <button class="type-btn" data-type="line" title="Line Chart"><i class="fa-solid fa-chart-line"></i> Line</button>
+                    <button class="type-btn" data-type="scatter" title="Scatter Plot"><i class="fa-solid fa-braille"></i> Scatter</button>
+                    <button class="type-btn" data-type="radar" title="Radar Chart"><i class="fa-solid fa-chart-pie"></i> Radar</button>
+                  </div>
+                </div>
+
+                <div class="toolbar-right">
+                  <button class="toolbar-action-btn" id="btn-toggle-sort" title="Toggle Sort (Asc / Desc)">
+                    <i class="fa-solid fa-arrow-down-wide-short"></i> <span>Sort</span>
+                  </button>
+                  <button class="toolbar-action-btn" id="btn-export-png" title="Download Chart as PNG">
+                    <i class="fa-solid fa-image"></i> <span>PNG</span>
+                  </button>
+                  <button class="toolbar-action-btn" id="btn-export-csv" title="Export Data as CSV">
+                    <i class="fa-solid fa-file-csv"></i> <span>CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Main Chart Canvas Area -->
+              <div class="ai-chart-canvas-wrap" id="ai-chart-canvas-wrap">
+                <div class="chart-header-info" id="ai-chart-header-info">
+                  <div class="chart-title-row">
+                    <h3 id="ai-chart-title">Select a query or type a prompt to generate a chart</h3>
+                    <span class="badge badge-accent" id="ai-chart-type-badge" style="display: none;">Bar</span>
+                  </div>
+                  <p id="ai-chart-subtitle" class="text-secondary">Visualizations will render here dynamically</p>
+                </div>
+
+                <div class="canvas-holder">
+                  <canvas id="ai-main-chart"></canvas>
+                  <div class="chart-empty-state" id="ai-chart-empty">
+                    <div class="empty-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                    <h4>No Chart Generated Yet</h4>
+                    <p>Type a question in the chat or click one of the preset chips to build an interactive chart!</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bottom Tabs: Narrative, Raw SQL, Data Table -->
+              <div class="ai-details-panel">
+                <div class="ai-details-tabs">
+                  <button class="details-tab-btn active" data-pane="ai-pane-narrative"><i class="fa-solid fa-comment-dots"></i> Analysis</button>
+                  <button class="details-tab-btn" data-pane="ai-pane-data"><i class="fa-solid fa-table"></i> Data Table (<span id="ai-data-count">0</span>)</button>
+                  <button class="details-tab-btn" data-pane="ai-pane-sql"><i class="fa-solid fa-code"></i> Generated SQL</button>
+                </div>
+
+                <div class="ai-details-content">
+                  <!-- Narrative Pane -->
+                  <div class="ai-pane active" id="ai-pane-narrative">
+                    <div class="ai-narrative-text" id="ai-narrative-text">
+                      Analysis and statistical insights will appear here once a query is executed.
+                    </div>
+                  </div>
+
+                  <!-- Data Table Pane -->
+                  <div class="ai-pane" id="ai-pane-data">
+                    <div class="table-container" style="max-height: 240px; overflow-y: auto;">
+                      <table class="data-table" id="ai-data-table">
+                        <thead><tr id="ai-table-thead"></tr></thead>
+                        <tbody id="ai-table-tbody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- SQL Inspector Pane -->
+                  <div class="ai-pane" id="ai-pane-sql">
+                    <div class="sql-inspector-wrap">
+                      <div class="sql-toolbar">
+                        <span>Executed Query against <code>nba_stats.db</code>:</span>
+                        <div class="sql-actions">
+                          <button class="btn-copy-sql" id="btn-copy-ai-sql"><i class="fa-solid fa-copy"></i> Copy SQL</button>
+                          <button class="btn-copy-sql" id="btn-open-in-playground"><i class="fa-solid fa-terminal"></i> Open in SQL Playground</button>
+                        </div>
+                      </div>
+                      <pre class="sql-code-block"><code id="ai-sql-code">-- SQL Query will appear here</code></pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Capology, Contract Valuation & Trade Machine Section -->
+      <section id="capology" class="tab-pane">
+        <!-- Capology Top Bar & Subnav -->
+        <div class="capology-header-card glass-card mb-4">
+          <div class="capology-top-row">
+            <div class="header-title">
+              <i class="fa-solid fa-coins text-warning" style="font-size: 1.8rem;"></i>
+              <div>
+                <h2>NBA Capology, Contracts & Trade Machine</h2>
+                <span class="badge badge-accent">2023 CBA Rules Engine</span>
+              </div>
+            </div>
+            
+            <div class="capology-controls">
+              <!-- Season Picker -->
+              <div class="control-item">
+                <label for="capology-season-select"><i class="fa-solid fa-calendar"></i> Season:</label>
+                <select id="capology-season-select" class="dropdown-input">
+                  <option value="2023-24" selected>2023-24 (Active Baseline)</option>
+                  <option value="2024-25">2024-25 (Current Season)</option>
+                  <option value="2025-26">2025-26 (Projected Cap)</option>
+                </select>
+              </div>
+
+              <!-- Scenario Sandbox Tools -->
+              <div class="scenario-tools-group">
+                <span class="scenario-status-pill" id="scenario-active-badge">
+                  <span class="status-dot online"></span> <span id="scenario-active-text">Official Baseline</span>
+                </span>
+                <button class="btn btn-sm btn-secondary" id="btn-cap-save-scenario" title="Save Scenario Sandbox"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                <button class="btn btn-sm btn-secondary" id="btn-cap-load-scenario" title="Load Saved Scenario"><i class="fa-solid fa-folder-open"></i> Load</button>
+                <button class="btn btn-sm btn-warning" id="btn-cap-apply-active" title="Apply Simulated Roster to Active Database" style="display:none;"><i class="fa-solid fa-bolt"></i> Apply Trade</button>
+                <button class="btn btn-sm btn-danger" id="btn-cap-reset-baseline" title="Reset All Rosters & Cap Sheets to Baseline"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Capology Subnav Pills -->
+          <div class="capology-nav-pills mt-3">
+            <button class="cap-pill active" data-subtab="trade-machine-view"><i class="fa-solid fa-arrows-split-up-and-left"></i> Trade Machine</button>
+            <button class="cap-pill" data-subtab="cap-sheets-view"><i class="fa-solid fa-chart-column"></i> Team Cap Sheets & Tax</button>
+            <button class="cap-pill" data-subtab="contract-values-view"><i class="fa-solid fa-gem"></i> Contract Valuation & WAR</button>
+            <button class="cap-pill" data-subtab="waive-stretch-view"><i class="fa-solid fa-scissors"></i> Waive & Stretch Calculator</button>
+          </div>
+        </div>
+
+        <!-- 1. TRADE MACHINE SUBTAB -->
+        <div id="trade-machine-view" class="cap-subtab-pane active">
+          <!-- Preset Trade Chips -->
+          <div class="trade-presets-bar mb-3">
+            <span class="presets-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Presets:</span>
+            <button class="preset-chip" id="preset-trade-1">Lakers & Celtics Star Trade</button>
+            <button class="preset-chip" id="preset-trade-2">Warriors Aggregation Violation (Illegal)</button>
+            <button class="preset-chip" id="preset-trade-3">Spurs Cap Space Absorption</button>
+            <button class="preset-chip" id="preset-trade-4">3-Team Trade (LAL - BOS - OKC)</button>
+          </div>
+
+          <!-- Multi-Team Trade Builder Grid -->
+          <div class="trade-teams-grid mb-3" id="trade-teams-container">
+            <!-- Dynamically injected -->
+          </div>
+
+          <div class="trade-action-bar mb-4">
+            <button class="btn btn-secondary" id="btn-add-trade-team"><i class="fa-solid fa-plus"></i> Add Team (Multi-Team)</button>
+            <button class="btn btn-primary btn-lg" id="btn-run-trade-sim"><i class="fa-solid fa-play"></i> Evaluate 2023 CBA Trade Legality</button>
+          </div>
+
+          <!-- Trade Results Container -->
+          <div id="trade-results-panel" style="display: none;" class="glass-card mb-4">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <!-- 2. TEAM CAP SHEETS SUBTAB -->
+        <div id="cap-sheets-view" class="cap-subtab-pane" style="display: none;">
+          <div class="glass-card mb-4">
+            <div class="cap-sheet-toolbar">
+              <div class="control-item">
+                <label for="cap-team-select"><strong>Select Franchise:</strong></label>
+                <select id="cap-team-select" class="dropdown-input"></select>
+              </div>
+              <div class="team-quick-stats" id="team-quick-chips"></div>
+            </div>
+
+            <!-- Visual Cap Bar Meter -->
+            <div class="cap-meter-container mt-4 mb-4" id="cap-meter-wrap">
+              <div class="meter-labels-row">
+                <span id="meter-lbl-floor">Floor: $122.4M</span>
+                <span id="meter-lbl-cap">Cap: $136.0M</span>
+                <span id="meter-lbl-tax">Tax: $165.3M</span>
+                <span id="meter-lbl-apron1">1st Apron: $172.3M</span>
+                <span id="meter-lbl-apron2">2nd Apron: $182.8M</span>
+              </div>
+              <div class="cap-progress-track">
+                <div class="cap-fill-active" id="cap-fill-active" style="width: 50%;"></div>
+                <div class="cap-fill-dead" id="cap-fill-dead" style="width: 5%;"></div>
+                <div class="meter-mark floor" style="left: 60%;" title="Minimum Team Salary Floor"></div>
+                <div class="meter-mark cap" style="left: 68%;" title="Salary Cap Line"></div>
+                <div class="meter-mark tax" style="left: 82%;" title="Luxury Tax Line"></div>
+                <div class="meter-mark apron1" style="left: 86%;" title="First Apron"></div>
+                <div class="meter-mark apron2" style="left: 92%;" title="Second Apron"></div>
+              </div>
+              <div class="meter-current-pointer" id="meter-pointer">
+                <span id="meter-pointer-text">Total Payroll: $0.0M</span>
+              </div>
+            </div>
+
+            <!-- Financial KPIs Grid -->
+            <div class="kpi-grid mb-4" id="cap-kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-icon blue"><i class="fa-solid fa-receipt"></i></div>
+                <div class="kpi-info">
+                  <span class="kpi-label">Active Payroll</span>
+                  <span class="kpi-value" id="kpi-active-payroll">$0.0M</span>
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon orange"><i class="fa-solid fa-scale-balanced"></i></div>
+                <div class="kpi-info">
+                  <span class="kpi-label">Cap Room / Space</span>
+                  <span class="kpi-value" id="kpi-cap-space">$0.0M</span>
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon purple"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="kpi-info">
+                  <span class="kpi-label">Apron 2 Room</span>
+                  <span class="kpi-value" id="kpi-apron2-room">$0.0M</span>
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon red"><i class="fa-solid fa-landmark"></i></div>
+                <div class="kpi-info">
+                  <span class="kpi-label">Luxury Tax Bill</span>
+                  <span class="kpi-value" id="kpi-tax-bill">$0.0M</span>
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon green"><i class="fa-solid fa-money-bill-wave"></i></div>
+                <div class="kpi-info">
+                  <span class="kpi-label">Total Outlay</span>
+                  <span class="kpi-value" id="kpi-total-cost">$0.0M</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Penalties Alert Box -->
+            <div id="cap-penalties-box" class="penalties-alert-box mb-4" style="display: none;"></div>
+
+            <!-- Team Multi-Year Roster Contracts Table -->
+            <div class="card-header">
+              <div class="header-title">
+                <i class="fa-solid fa-users"></i> Active Roster Contracts & Multi-Year Commitments
+              </div>
+            </div>
+            <div class="table-container mb-4">
+              <table class="data-table" id="team-contracts-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Type</th>
+                    <th>2023-24</th>
+                    <th>2024-25</th>
+                    <th>2025-26</th>
+                    <th>2026-27</th>
+                    <th>Option / Status</th>
+                    <th>Guaranteed</th>
+                  </tr>
+                </thead>
+                <tbody id="team-contracts-tbody"></tbody>
+              </table>
+            </div>
+
+            <!-- Dead Money & TPEs Row -->
+            <div class="grid-2col mt-4">
+              <div class="glass-card">
+                <h4 class="mb-2"><i class="fa-solid fa-skull"></i> Dead Money / Stretched Cap Hits</h4>
+                <div class="table-container">
+                  <table class="data-table" id="dead-money-table">
+                    <thead><tr><th>Player</th><th>Season</th><th>Cap Hit</th><th>Stretched</th></tr></thead>
+                    <tbody id="dead-money-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="glass-card">
+                <h4 class="mb-2"><i class="fa-solid fa-ticket"></i> Traded Player Exceptions (TPE)</h4>
+                <div class="table-container">
+                  <table class="data-table" id="tpe-table">
+                    <thead><tr><th>Source</th><th>Amount</th><th>Expires</th><th>Notes</th></tr></thead>
+                    <tbody id="tpe-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 3. CONTRACT VALUE EXPLORER SUBTAB -->
+        <div id="contract-values-view" class="cap-subtab-pane" style="display: none;">
+          <div class="glass-card mb-4">
+            <div class="card-header">
+              <div class="header-title">
+                <i class="fa-solid fa-gem text-accent"></i>
+                <div>
+                  <h3>Box LEBRON Contract Valuation & Surplus WAR Leaderboard</h3>
+                  <small class="text-secondary">Connecting on-court production (Wins Added) with salary cap hit to evaluate contract efficiency.</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="filters-row mb-3 mt-3">
+              <div class="filter-group">
+                <label>Filter Team:</label>
+                <select id="cv-team-filter" class="dropdown-input">
+                  <option value="">All Teams (League-wide)</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Value Tier:</label>
+                <select id="cv-tier-filter" class="dropdown-input">
+                  <option value="">All Tiers</option>
+                  <option value="Super Bargain">Super Bargain 💎</option>
+                  <option value="High Surplus Value">High Surplus 🟢</option>
+                  <option value="Fair Market Value">Fair Market Value ⚖️</option>
+                  <option value="Overpaid">Overpaid 🟡</option>
+                  <option value="Toxic Contract">Toxic Contract 🔴</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Sort By:</label>
+                <select id="cv-sort-filter" class="dropdown-input">
+                  <option value="surplus_value" selected>Surplus Value ($M)</option>
+                  <option value="roi_pct">ROI %</option>
+                  <option value="wins_added">Box LEBRON Wins Added</option>
+                  <option value="cap_hit">Cap Hit</option>
+                  <option value="fair_market_value">Fair Market Value</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Order:</label>
+                <select id="cv-order-filter" class="dropdown-input">
+                  <option value="desc" selected>Highest / Best Bargains First</option>
+                  <option value="asc">Lowest / Most Toxic Overpays First</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-container">
+              <table class="data-table" id="contract-valuation-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Team</th>
+                    <th>Cap Hit ($M)</th>
+                    <th>Box LEBRON</th>
+                    <th>Wins Added</th>
+                    <th>Fair Market Val</th>
+                    <th>Surplus Value</th>
+                    <th>ROI %</th>
+                    <th>Value Tier</th>
+                  </tr>
+                </thead>
+                <tbody id="contract-valuation-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. WAIVE & STRETCH SUBTAB -->
+        <div id="waive-stretch-view" class="cap-subtab-pane" style="display: none;">
+          <div class="glass-card mb-4">
+            <div class="card-header">
+              <div class="header-title">
+                <i class="fa-solid fa-scissors text-danger"></i>
+                <div>
+                  <h3>Waive & Stretch Provision Calculator</h3>
+                  <small class="text-secondary">Under NBA CBA Article II, waiving and stretching spreads remaining guaranteed money over <code>(2 * remaining_years) + 1</code> seasons.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row mt-3 mb-4" style="display: flex; gap: 15px; align-items: flex-end;">
+              <div class="form-group" style="flex: 2;">
+                <label for="ws-player-select"><strong>Select Player to Waive:</strong></label>
+                <select id="ws-player-select" class="dropdown-input"></select>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label for="ws-season-select"><strong>Waive Season:</strong></label>
+                <select id="ws-season-select" class="dropdown-input">
+                  <option value="2023-24">2023-24</option>
+                  <option value="2024-25">2024-25</option>
+                </select>
+              </div>
+              <button class="btn btn-danger" id="btn-calc-stretch"><i class="fa-solid fa-calculator"></i> Calculate Stretch</button>
+            </div>
+
+            <div id="ws-results-box" style="display: none;">
+              <!-- Calculated KPI cards and schedule table -->
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Endpoint Preview Modal -->
+  <div class="modal-overlay" id="ep-detail-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-ep-title" class="modal-title">Endpoint Details</h3>
+          <span id="modal-ep-badge" class="badge"></span>
+          <span id="modal-ep-category" class="badge badge-outline"></span>
+        </div>
+        <button class="btn-close-modal" id="btn-close-ep-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="modal-ep-doc" class="text-secondary mb-3"></p>
+        
+        <div class="modal-meta-grid mb-3">
+          <div><strong>Total Rows:</strong> <span id="modal-ep-rows">0</span></div>
+          <div><strong>Tables Created:</strong> <span id="modal-ep-tables-count">0</span></div>
+          <div><strong>Required Params:</strong> <span id="modal-ep-params">-</span></div>
+          <div><strong>Last Downloaded:</strong> <span id="modal-ep-date">-</span></div>
+        </div>
+
+        <!-- Dataset Tabs if multiple -->
+        <div class="dataset-tabs-bar" id="modal-dataset-tabs"></div>
+
+        <!-- Table View -->
+        <div class="table-container mt-3" style="max-height: 360px; overflow-y: auto;">
+          <table class="data-table" id="modal-dataset-table">
+            <thead><tr id="modal-table-thead"></tr></thead>
+            <tbody id="modal-table-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Sample SQL Snippet -->
+        <div class="sql-snippet-box mt-3">
+          <div class="snippet-header">
+            <span>Query Table in SQL Playground:</span>
+            <button class="btn-copy-sql" id="btn-copy-modal-sql"><i class="fa-solid fa-copy"></i> Copy Query</button>
+          </div>
+          <code id="modal-sql-code">SELECT * FROM ... LIMIT 20;</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Game Detail Modal -->
+  <div class="modal-overlay" id="live-game-modal" style="display: none;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-live-title" class="modal-title">Live Matchup</h3>
+          <span id="modal-live-status-badge" class="badge"></span>
+          <span id="modal-live-clock-badge" class="badge badge-outline"></span>
+        </div>
+        <button class="btn-close-modal" id="btn-close-live-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Matchup Score Banner -->
+        <div class="live-modal-banner" id="modal-live-banner"></div>
+
+        <!-- Team Leaders Grid -->
+        <div class="live-modal-leaders mt-3" id="modal-live-leaders"></div>
+
+        <!-- Live View Tabs -->
+        <div class="live-modal-tabs-bar mt-3">
+          <button class="live-subtab-btn active" id="btn-tab-boxscore">Box Score</button>
+          <button class="live-subtab-btn" id="btn-tab-pbp">Play-by-Play</button>
+        </div>
+
+        <!-- Boxscore Tab View -->
+        <div id="live-modal-boxscore-pane" class="live-modal-pane active mt-3">
+          <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+            <table class="data-table" id="live-modal-boxscore-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Team</th>
+                  <th>Pos</th>
+                  <th>Min</th>
+                  <th>Pts</th>
+                  <th>Reb</th>
+                  <th>Ast</th>
+                  <th>FG</th>
+                  <th>3PT</th>
+                  <th>FT</th>
+                  <th>+/-</th>
+                </tr>
+              </thead>
+              <tbody id="live-modal-boxscore-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Play-by-Play Tab View -->
+        <div id="live-modal-pbp-pane" class="live-modal-pane mt-3" style="display: none;">
+          <div class="live-pbp-timeline" id="live-modal-pbp-timeline" style="max-height: 380px; overflow-y: auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Settings Modal -->
+  <div class="modal-overlay" id="ai-settings-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title"><i class="fa-solid fa-sliders"></i> AI Chart Studio Settings</h3>
+          <span class="badge badge-accent">Gemini Configuration</span>
+        </div>
+        <button class="btn-close-modal" id="btn-close-ai-settings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label for="ai-settings-apikey"><strong>Google Gemini API Key:</strong></label>
+          <input type="password" id="ai-settings-apikey" class="dropdown-input" placeholder="AIzaSy... (leave blank to use server env or demo presets)">
+          <small class="text-secondary" style="display: block; margin-top: 4px;">Your API key is saved locally in your browser and used only to process your queries.</small>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="ai-settings-model"><strong>Gemini Model:</strong></label>
+          <select id="ai-settings-model" class="dropdown-input">
+            <option value="gemini-flash-latest" selected>Gemini Flash (Latest - Recommended)</option>
+            <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+            <option value="gemini-pro-latest">Gemini Pro (Deep Reasoning)</option>
+          </select>
+        </div>
+
+        <div class="settings-validation-row mb-3" id="ai-key-status" style="display: none;">
+          <span class="status-msg"></span>
+        </div>
+
+        <div class="modal-actions-row" style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button class="btn btn-secondary" id="btn-test-ai-key"><i class="fa-solid fa-plug"></i> Test Connection</button>
+          <button class="btn btn-primary" id="btn-save-ai-settings"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save Scenario Modal -->
+  <div class="modal-overlay" id="save-scenario-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-floppy-disk"></i> Save Trade / Cap Scenario</h3>
+        <button class="btn-close-modal" id="btn-close-save-scenario">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label for="scenario-name-input"><strong>Scenario Name:</strong></label>
+          <input type="text" id="scenario-name-input" class="dropdown-input" placeholder="e.g. 2024 Trade Deadline Blockbuster">
+        </div>
+        <div class="form-group mb-3">
+          <label for="scenario-desc-input"><strong>Notes / Description:</strong></label>
+          <textarea id="scenario-desc-input" class="dropdown-input" rows="3" placeholder="Explain the trades or cap maneuvers in this scenario..."></textarea>
+        </div>
+        <div class="modal-actions-row" style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn btn-secondary" id="btn-cancel-save-scenario">Cancel</button>
+          <button class="btn btn-primary" id="btn-confirm-save-scenario"><i class="fa-solid fa-check"></i> Save Scenario</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Scenario Modal -->
+  <div class="modal-overlay" id="load-scenario-modal" style="display: none;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-folder-open"></i> Load Saved Cap Scenario</h3>
+        <button class="btn-close-modal" id="btn-close-load-scenario">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+          <table class="data-table">
+            <thead><tr><th>Scenario Name</th><th>Description</th><th>Updated</th><th>Action</th></tr></thead>
+            <tbody id="saved-scenarios-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+{
+  "marquee_games": [
+    {
+      "game_id": "0022300061",
+      "home_team": "BOS",
+      "away_team": "LAL",
+      "game_date": "2024-02-01",
+      "home_score": 118,
+      "away_score": 105,
+      "timeline": [
+        {
+          "seconds_remaining": 2880.0,
+          "period": 1,
+          "score_margin": 0,
+          "home_score": 0,
+          "away_score": 0,
+          "home_win_prob": 0.62,
+          "away_win_prob": 0.38
+        },
+        {
+          "seconds_remaining": 2760.0,
+          "period": 1,
+          "score_margin": 2,
+          "home_score": 5,
+          "away_score": 3,
+          "home_win_prob": 0.6821,
+          "away_win_prob": 0.3179
+        },
+        {
+          "seconds_remaining": 2640.0,
+          "period": 1,
+          "score_margin": -1,
+          "home_score": 8,
+          "away_score": 9,
+          "home_win_prob": 0.5841,
+          "away_win_prob": 0.4159
+        },
+        {
+          "seconds_remaining": 2520.0,
+          "period": 1,
+          "score_margin": 3,
+          "home_score": 15,
+          "away_score": 12,
+          "home_win_prob": 0.7138,
+          "away_win_prob": 0.2862
+        },
+        {
+          "seconds_remaining": 2400.0,
+          "period": 1,
+          "score_margin": 5,
+          "home_score": 21,
+          "away_score": 16,
+          "home_win_prob": 0.7719,
+          "away_win_prob": 0.2281
+        },
+        {
+          "seconds_remaining": 2280.0,
+          "period": 1,
+          "score_margin": 2,
+          "home_score": 24,
+          "away_score": 22,
+          "home_win_prob": 0.6849,
+          "away_win_prob": 0.3151
+        },
+        {
+          "seconds_remaining": 2160.0,
+          "period": 2,
+          "score_margin": 7,
+          "home_score": 31,
+          "away_score": 24,
+          "home_win_prob": 0.8273,
+          "away_win_prob": 0.1727
+        },
+        {
+          "seconds_remaining": 2040.0,
+          "period": 2,
+          "score_margin": 10,
+          "home_score": 37,
+          "away_score": 27,
+          "home_win_prob": 0.8889,
+          "away_win_prob": 0.1111
+        },
+        {
+          "seconds_remaining": 1920.0,
+          "period": 2,
+          "score_margin": 8,
+          "home_score": 41,
+          "away_score": 33,
+          "home_win_prob": 0.8573,
+          "away_win_prob": 0.1427
+        },
+        {
+          "seconds_remaining": 1800.0,
+          "period": 2,
+          "score_margin": 12,
+          "home_score": 48,
+          "away_score": 36,
+          "home_win_prob": 0.9257,
+          "away_win_prob": 0.0743
+        },
+        {
+          "seconds_remaining": 1680.0,
+          "period": 2,
+          "score_margin": 9,
+          "home_score": 51,
+          "away_score": 42,
+          "home_win_prob": 0.8868,
+          "away_win_prob": 0.1132
+        },
+        {
+          "seconds_remaining": 1560.0,
+          "period": 2,
+          "score_margin": 14,
+          "home_score": 58,
+          "away_score": 44,
+          "home_win_prob": 0.9544,
+          "away_win_prob": 0.0456
+        },
+        {
+          "seconds_remaining": 1440.0,
+          "period": 3,
+          "score_margin": 11,
+          "home_score": 61,
+          "away_score": 50,
+          "home_win_prob": 0.9288,
+          "away_win_prob": 0.0712
+        },
+        {
+          "seconds_remaining": 1320.0,
+          "period": 3,
+          "score_margin": 15,
+          "home_score": 68,
+          "away_score": 53,
+          "home_win_prob": 0.9697,
+          "away_win_prob": 0.0303
+        },
+        {
+          "seconds_remaining": 1200.0,
+          "period": 3,
+          "score_margin": 12,
+          "home_score": 71,
+          "away_score": 59,
+          "home_win_prob": 0.9516,
+          "away_win_prob": 0.0484
+        },
+        {
+          "seconds_remaining": 1080.0,
+          "period": 3,
+          "score_margin": 8,
+          "home_score": 74,
+          "away_score": 66,
+          "home_win_prob": 0.9028,
+          "away_win_prob": 0.0972
+        },
+        {
+          "seconds_remaining": 960.0,
+          "period": 3,
+          "score_margin": 6,
+          "home_score": 77,
+          "away_score": 71,
+          "home_win_prob": 0.8663,
+          "away_win_prob": 0.1337
+        },
+        {
+          "seconds_remaining": 840.0,
+          "period": 3,
+          "score_margin": 9,
+          "home_score": 83,
+          "away_score": 74,
+          "home_win_prob": 0.9386,
+          "away_win_prob": 0.0614
+        },
+        {
+          "seconds_remaining": 720.0,
+          "period": 4,
+          "score_margin": 11,
+          "home_score": 89,
+          "away_score": 78,
+          "home_win_prob": 0.9696,
+          "away_win_prob": 0.0304
+        },
+        {
+          "seconds_remaining": 600.0,
+          "period": 4,
+          "score_margin": 7,
+          "home_score": 92,
+          "away_score": 85,
+          "home_win_prob": 0.9288,
+          "away_win_prob": 0.0712
+        },
+        {
+          "seconds_remaining": 480.0,
+          "period": 4,
+          "score_margin": 5,
+          "home_score": 95,
+          "away_score": 90,
+          "home_win_prob": 0.8976,
+          "away_win_prob": 0.1024
+        },
+        {
+          "seconds_remaining": 360.0,
+          "period": 4,
+          "score_margin": 8,
+          "home_score": 102,
+          "away_score": 94,
+          "home_win_prob": 0.9739,
+          "away_win_prob": 0.0261
+        },
+        {
+          "seconds_remaining": 240.0,
+          "period": 4,
+          "score_margin": 12,
+          "home_score": 108,
+          "away_score": 96,
+          "home_win_prob": 0.9981,
+          "away_win_prob": 0.0019
+        },
+        {
+          "seconds_remaining": 120.0,
+          "period": 4,
+          "score_margin": 10,
+          "home_score": 112,
+          "away_score": 102,
+          "home_win_prob": 0.999,
+          "away_win_prob": 0.001
+        },
+        {
+          "seconds_remaining": 0.0,
+          "period": 4,
+          "score_margin": 14,
+          "home_score": 119,
+          "away_score": 105,
+          "home_win_prob": 1.0,
+          "away_win_prob": 0.0
+        }
+      ]
+    }
+  ]
+}

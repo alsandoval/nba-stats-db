@@ -1,0 +1,96 @@
+{
+  "games": [
+    {
+      "gameId": "0022300001",
+      "gameStatus": 3,
+      "gameStatusText": "FINAL (Thriller)",
+      "period": 4,
+      "gameClock": "00:00",
+      "homeTeam": {
+        "tricode": "IND",
+        "name": "Pacers",
+        "score": 121,
+        "record": "47-35"
+      },
+      "awayTeam": {
+        "tricode": "CLE",
+        "name": "Cavaliers",
+        "score": 116,
+        "record": "48-34"
+      },
+      "leadChanges": 10,
+      "timesTied": 4,
+      "biggestLead": 18,
+      "isFeatured": true
+    },
+    {
+      "gameId": "0022300002",
+      "gameStatus": 2,
+      "gameStatusText": "4th Qtr 1:44",
+      "period": 4,
+      "gameClock": "01:44",
+      "homeTeam": {
+        "tricode": "BOS",
+        "name": "Celtics",
+        "score": 114,
+        "record": "64-18"
+      },
+      "awayTeam": {
+        "tricode": "NYK",
+        "name": "Knicks",
+        "score": 109,
+        "record": "50-32"
+      },
+      "leadChanges": 8,
+      "timesTied": 6,
+      "biggestLead": 11,
+      "isFeatured": false
+    },
+    {
+      "gameId": "0022300003",
+      "gameStatus": 2,
+      "gameStatusText": "4th Qtr 3:12",
+      "period": 4,
+      "gameClock": "03:12",
+      "homeTeam": {
+        "tricode": "DEN",
+        "name": "Nuggets",
+        "score": 108,
+        "record": "57-25"
+      },
+      "awayTeam": {
+        "tricode": "MIN",
+        "name": "Timberwolves",
+        "score": 105,
+        "record": "56-26"
+      },
+      "leadChanges": 14,
+      "timesTied": 9,
+      "biggestLead": 8,
+      "isFeatured": false
+    },
+    {
+      "gameId": "0022300004",
+      "gameStatus": 3,
+      "gameStatusText": "FINAL (OT)",
+      "period": 5,
+      "gameClock": "00:00",
+      "homeTeam": {
+        "tricode": "LAL",
+        "name": "Lakers",
+        "score": 118,
+        "record": "47-35"
+      },
+      "awayTeam": {
+        "tricode": "GSW",
+        "name": "Warriors",
+        "score": 115,
+        "record": "46-36"
+      },
+      "leadChanges": 12,
+      "timesTied": 7,
+      "biggestLead": 9,
+      "isFeatured": false
+    }
+  ]
+}
