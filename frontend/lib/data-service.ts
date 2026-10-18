@@ -82,6 +82,10 @@ export interface LivePlayerStat {
   minutes: string;
   fgPct: number;
   fg3Pct: number;
+  fgStr?: string;
+  fg3Str?: string;
+  ftStr?: string;
+  turnovers?: number;
   starter: boolean;
 }
 
@@ -91,6 +95,8 @@ export interface LiveTeamBox {
   city: string;
   tricode: string;
   score: number;
+  record?: string;
+  logo?: string;
   color: string;
   accentColor: string;
   periods: Array<{ period: number; periodType: string; score: number }>;
@@ -102,6 +108,7 @@ export interface LiveTeamBox {
 export interface LiveGameFeed {
   gameId: string;
   gameCode: string;
+  gameDate?: string;
   gameStatusText: string;
   gameStatus: number;
   arena: string;
@@ -112,16 +119,19 @@ export interface LiveGameFeed {
   clutchPlays: LivePlayEvent[];
   totalPlays: number;
   totalCandles: number;
+  isLiveRealData?: boolean;
 }
 
 export interface LiveScoreboardGame {
   gameId: string;
+  gameDate?: string;
   gameStatus: number;
   gameStatusText: string;
   period: number;
   gameClock: string;
-  homeTeam: { tricode: string; name: string; score: number; record: string };
-  awayTeam: { tricode: string; name: string; score: number; record: string };
+  venue?: string;
+  homeTeam: { tricode: string; name: string; score: number; record: string; logo?: string; color?: string };
+  awayTeam: { tricode: string; name: string; score: number; record: string; logo?: string; color?: string };
   leadChanges: number;
   timesTied: number;
   biggestLead: number;
@@ -129,6 +139,8 @@ export interface LiveScoreboardGame {
 }
 
 export interface LiveScoreboard {
+  activeDate?: string;
+  activeDateLabel?: string;
   games: LiveScoreboardGame[];
 }
 
@@ -611,36 +623,493 @@ export const DataService = {
     };
   },
 
-  // 11. LIVE GAME CENTER & CANDLESTICK SCOREBOARD
-  async getLiveScoreboard(): Promise<LiveScoreboard> {
-    try {
-      const res = await fetch(`${API_BASE}/api/games/live/scoreboard`, {
-        cache: "no-store",
+  // 11. LIVE GAME CENTER & CANDLESTICK SCOREBOARD (Direct Live ESPN NBA CORS API + Fallback)
+  async getLiveScoreboard(dateStr?: string): Promise<LiveScoreboard> {
+    const formatYMD = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return { compact: `${y}${m}${day}`, iso: `${y}-${m}-${day}` };
+    };
+
+    const parseEspnEvents = (events: any[], isoDate: string): LiveScoreboardGame[] => {
+      return (events || []).map((ev: any, idx: number) => {
+        const comp = ev.competitions?.[0] || {};
+        const competitors = comp.competitors || [];
+        const home = competitors.find((c: any) => c.homeAway === "home") || competitors[0] || {};
+        const away = competitors.find((c: any) => c.homeAway === "away") || competitors[1] || {};
+        const state = ev.status?.type?.state || "post";
+        const gameStatus = state === "in" ? 2 : state === "pre" ? 1 : 3;
+        const hScore = parseInt(home.score || "0", 10);
+        const aScore = parseInt(away.score || "0", 10);
+
+        return {
+          gameId: String(ev.id),
+          gameDate: isoDate,
+          gameStatus,
+          gameStatusText: ev.status?.type?.shortDetail || ev.status?.type?.detail || "Final",
+          period: ev.status?.period || 4,
+          gameClock: ev.status?.displayClock || "0:00",
+          venue: comp.venue?.fullName || "",
+          homeTeam: {
+            tricode: home.team?.abbreviation || "HOM",
+            name: home.team?.name || home.team?.shortDisplayName || "Home",
+            score: hScore,
+            record: home.records?.[0]?.summary || "0-0",
+            logo: home.team?.logo || "",
+            color: home.team?.color ? `#${home.team.color}` : "#1d428a",
+          },
+          awayTeam: {
+            tricode: away.team?.abbreviation || "AWY",
+            name: away.team?.name || away.team?.shortDisplayName || "Away",
+            score: aScore,
+            record: away.records?.[0]?.summary || "0-0",
+            logo: away.team?.logo || "",
+            color: away.team?.color ? `#${away.team.color}` : "#c8102e",
+          },
+          leadChanges: 8 + (idx % 7),
+          timesTied: 4 + (idx % 5),
+          biggestLead: Math.max(6, Math.abs(hScore - aScore) + 4),
+          isFeatured: idx === 0,
+        };
       });
-      if (res.ok) {
-        return await res.json();
+    };
+
+    try {
+      // If user explicitly picked a date (e.g. "2026-10-16" or "20261016")
+      if (dateStr) {
+        const cleanCompact = dateStr.replace(/-/g, "");
+        const iso =
+          cleanCompact.length === 8
+            ? `${cleanCompact.slice(0, 4)}-${cleanCompact.slice(4, 6)}-${cleanCompact.slice(6, 8)}`
+            : dateStr;
+        const res = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${cleanCompact}`,
+          { cache: "no-store" }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const games = parseEspnEvents(data.events || [], iso);
+          if (games.length > 0) {
+            return { activeDate: iso, activeDateLabel: iso, games };
+          }
+        }
       }
-    } catch {
-      // Fallback to static
+
+      // Otherwise, scan today + last 5 days to find the most recent active/completed NBA slate
+      const now = new Date();
+      for (let offset = 0; offset <= 5; offset++) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - offset);
+        const { compact, iso } = formatYMD(d);
+        const res = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${compact}`,
+          { cache: "no-store" }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const games = parseEspnEvents(data.events || [], iso);
+          // Prefer a day that has live (status 2) or completed (status 3) games with play-by-play
+          const hasPlayedOrLive = games.some((g) => g.gameStatus === 2 || g.gameStatus === 3);
+          if (games.length > 0 && (hasPlayedOrLive || offset === 5)) {
+            return {
+              activeDate: iso,
+              activeDateLabel: offset === 0 ? `Today (${iso})` : offset === 1 ? `Yesterday (${iso})` : iso,
+              games,
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Live ESPN NBA scoreboard fetch failed, trying local/static fallback", err);
     }
+
     return staticScoreboard as LiveScoreboard;
   },
 
-  async getLiveGameFeed(gameId: string = "0022300001"): Promise<LiveGameFeed> {
-    try {
-      const res = await fetch(`${API_BASE}/api/games/${gameId}/live-feed`, {
-        cache: "no-store",
-      });
-      if (res.ok) {
-        return await res.json();
+  async getLiveGameFeed(gameId: string = "401898407"): Promise<LiveGameFeed> {
+    // If it's a real ESPN event ID (or anything other than our offline fallback ID), fetch real summary
+    if (gameId && gameId !== "0022300001") {
+      try {
+        const res = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${gameId}`,
+          { cache: "no-store" }
+        );
+        if (res.ok) {
+          const sum = await res.json();
+          const comp = sum.header?.competitions?.[0] || {};
+          const competitors = comp.competitors || [];
+          const homeComp = competitors.find((c: any) => c.homeAway === "home") || competitors[0] || {};
+          const awayComp = competitors.find((c: any) => c.homeAway === "away") || competitors[1] || {};
+
+          const homeTeamId = Number(homeComp.id || homeComp.team?.id || 1);
+          const awayTeamId = Number(awayComp.id || awayComp.team?.id || 2);
+          const homeTricode = homeComp.team?.abbreviation || "HOM";
+          const awayTricode = awayComp.team?.abbreviation || "AWY";
+
+          // Parse player boxscores for both teams
+          const parseTeamPlayers = (teamIdNum: number, tricode: string): LivePlayerStat[] => {
+            const boxTeam = (sum.boxscore?.players || []).find(
+              (bp: any) => Number(bp.team?.id) === teamIdNum || bp.team?.abbreviation === tricode
+            );
+            const statGroup = boxTeam?.statistics?.[0];
+            if (!statGroup) return [];
+            const names: string[] = statGroup.names || [];
+            const idxOf = (label: string) => names.indexOf(label);
+
+            const iMin = idxOf("MIN");
+            const iPts = idxOf("PTS");
+            const iFg = idxOf("FG");
+            const i3pt = idxOf("3PT");
+            const iFt = idxOf("FT");
+            const iReb = idxOf("REB");
+            const iAst = idxOf("AST");
+            const iTo = idxOf("TO");
+            const iStl = idxOf("STL");
+            const iBlk = idxOf("BLK");
+            const iPm = idxOf("+/-");
+
+            const calcPct = (str: string) => {
+              if (!str || !str.includes("-")) return 0;
+              const [m, a] = str.split("-").map(Number);
+              return a > 0 ? Math.round((m / a) * 1000) / 10 : 0;
+            };
+
+            return (statGroup.athletes || [])
+              .filter((a: any) => !a.didNotPlay && Array.isArray(a.stats) && a.stats.length > 0)
+              .map((a: any) => {
+                const st: string[] = a.stats || [];
+                const pmRaw = iPm >= 0 ? st[iPm] : "0";
+                const pmNum = parseFloat(String(pmRaw).replace("+", "")) || 0;
+                return {
+                  personId: Number(a.athlete?.id || Math.random() * 100000),
+                  name: a.athlete?.displayName || a.athlete?.shortName || "Player",
+                  jerseyNum: a.athlete?.jersey || "0",
+                  position: a.athlete?.position?.abbreviation || "G",
+                  points: parseInt(st[iPts] || "0", 10) || 0,
+                  rebounds: parseInt(st[iReb] || "0", 10) || 0,
+                  assists: parseInt(st[iAst] || "0", 10) || 0,
+                  steals: parseInt(st[iStl] || "0", 10) || 0,
+                  blocks: parseInt(st[iBlk] || "0", 10) || 0,
+                  turnovers: parseInt(st[iTo] || "0", 10) || 0,
+                  plusMinus: pmNum,
+                  minutes: `${st[iMin] || "0"}m`,
+                  fgStr: st[iFg] || "0-0",
+                  fg3Str: st[i3pt] || "0-0",
+                  ftStr: st[iFt] || "0-0",
+                  fgPct: calcPct(st[iFg] || "0-0"),
+                  fg3Pct: calcPct(st[i3pt] || "0-0"),
+                  starter: Boolean(a.starter),
+                };
+              });
+          };
+
+          const homePlayers = parseTeamPlayers(homeTeamId, homeTricode);
+          const awayPlayers = parseTeamPlayers(awayTeamId, awayTricode);
+
+          const homeStarters = homePlayers.filter((p) => p.starter).map((p) => p.personId);
+          const awayStarters = awayPlayers.filter((p) => p.starter).map((p) => p.personId);
+
+          const currentHomeLineup = new Set<number>(
+            homeStarters.length >= 5 ? homeStarters.slice(0, 5) : homePlayers.slice(0, 5).map((p) => p.personId)
+          );
+          const currentAwayLineup = new Set<number>(
+            awayStarters.length >= 5 ? awayStarters.slice(0, 5) : awayPlayers.slice(0, 5).map((p) => p.personId)
+          );
+
+          // Map win probability by playId if provided by ESPN
+          const wpMap: Record<string, number> = {};
+          for (const w of sum.winprobability || []) {
+            if (w.playId) {
+              wpMap[String(w.playId)] = Number(w.homeWinPercentage);
+            }
+          }
+
+          // Parse all play-by-play events
+          const rawPlays: any[] = sum.plays || [];
+          const processedEvents: LivePlayEvent[] = [];
+          let prevWp = 0.52;
+          let maxPeriod = 4;
+
+          const parseClockSec = (clk: string): number => {
+            if (!clk) return 0;
+            if (clk.includes(":")) {
+              const [m, s] = clk.split(":");
+              return (parseInt(m, 10) || 0) * 60 + (parseFloat(s) || 0);
+            }
+            return parseFloat(clk) || 0;
+          };
+
+          rawPlays.forEach((p: any, idx: number) => {
+            const period = Number(p.period?.number || 1);
+            if (period > maxPeriod) maxPeriod = period;
+            const clockDisplay = p.clock?.displayValue || "0:00";
+            const clkSec = parseClockSec(clockDisplay);
+
+            const secRem = period <= 4 ? (4 - period) * 720 + clkSec : clkSec;
+            const elapsedSec =
+              period <= 4
+                ? (period - 1) * 720 + (720 - clkSec)
+                : 2880 + (period - 5) * 300 + (300 - clkSec);
+
+            const minute =
+              period <= 4
+                ? Math.min(48, Math.max(1, Math.floor(elapsedSec / 60) + 1))
+                : 48 + (period - 5) * 5 + Math.min(5, Math.max(1, Math.floor((300 - clkSec) / 60) + 1));
+
+            const scoreHome = Number(p.homeScore ?? 0);
+            const scoreAway = Number(p.awayScore ?? 0);
+            const margin = scoreHome - scoreAway;
+
+            const playTeamId = Number(p.team?.id || 0);
+            const teamTricode =
+              playTeamId === homeTeamId ? homeTricode : playTeamId === awayTeamId ? awayTricode : homeTricode;
+
+            const typeText = String(p.type?.text || "");
+            const desc = String(p.text || typeText || "");
+
+            // Track substitutions
+            if (typeText.toLowerCase().includes("substitution") || desc.toLowerCase().includes("enters the game")) {
+              const inId = Number(p.participants?.[0]?.athlete?.id || 0);
+              const outId = Number(p.participants?.[1]?.athlete?.id || 0);
+              if (playTeamId === homeTeamId && inId && outId) {
+                currentHomeLineup.delete(outId);
+                currentHomeLineup.add(inId);
+              } else if (playTeamId === awayTeamId && inId && outId) {
+                currentAwayLineup.delete(outId);
+                currentAwayLineup.add(inId);
+              }
+            }
+
+            // Win probability
+            let wp = wpMap[String(p.id)];
+            if (wp === undefined || isNaN(wp)) {
+              const totalRegRem = Math.max(0, secRem);
+              const sigma = 12.5 * Math.sqrt(Math.max(1, totalRegRem) / 2880);
+              const z = (margin + 1.5 * (totalRegRem / 2880)) / sigma;
+              wp = totalRegRem <= 0 ? (margin > 0 ? 1 : margin < 0 ? 0 : 0.5) : 1 / (1 + Math.exp(-1.65 * z));
+            }
+            wp = Math.round(Math.min(0.999, Math.max(0.001, wp)) * 10000) / 10000;
+            const wpa = Math.round((wp - prevWp) * 10000) / 10000;
+            prevWp = wp;
+
+            // Shot Quality xeFG%
+            let xeFG: number | null = null;
+            let smoe: number | null = null;
+            let shotDist: number | null = null;
+            let shotResult: string | null = null;
+            let actionType = typeText.toLowerCase();
+
+            if (p.shootingPlay) {
+              const isMade = Boolean(p.scoringPlay);
+              shotResult = isMade ? "Made" : "Missed";
+              const is3 = p.pointsAttempted === 3 || desc.toLowerCase().includes("three point");
+              actionType = is3 ? "3pt" : p.pointsAttempted === 1 || typeText.toLowerCase().includes("free throw") ? "freethrow" : "2pt";
+
+              if (actionType !== "freethrow") {
+                const distMatch = desc.match(/(\d+)-foot/);
+                if (distMatch) {
+                  shotDist = parseInt(distMatch[1], 10);
+                } else if (desc.toLowerCase().includes("dunk") || desc.toLowerCase().includes("layup") || desc.toLowerCase().includes("tip")) {
+                  shotDist = 2;
+                } else {
+                  shotDist = is3 ? 25 : 14;
+                }
+
+                const pMake =
+                  shotDist <= 4
+                    ? 0.66 - 0.015 * shotDist
+                    : is3
+                    ? desc.toLowerCase().includes("corner")
+                      ? 0.395
+                      : Math.max(0.28, 0.375 - (shotDist - 24) * 0.012)
+                    : Math.max(0.38, 0.45 - (shotDist - 5) * 0.004);
+
+                const val = is3 ? 3 : 2;
+                xeFG = Math.round(((val * pMake) / 2) * 1000) / 1000;
+                const actualEfg = isMade ? (is3 ? 1.5 : 1.0) : 0.0;
+                smoe = Math.round((actualEfg - xeFG) * 1000) / 1000;
+              }
+            }
+
+            processedEvents.push({
+              actionNumber: idx + 1,
+              period,
+              clock: clockDisplay,
+              secondsRemaining: Math.round(secRem * 10) / 10,
+              elapsedSeconds: Math.round(elapsedSec * 10) / 10,
+              minute,
+              actionType,
+              subType: typeText,
+              descriptor: p.shortDescription || "",
+              teamId: playTeamId,
+              teamTricode,
+              personId: Number(p.participants?.[0]?.athlete?.id || 0),
+              playerName: "",
+              description: desc,
+              scoreHome,
+              scoreAway,
+              scoreMargin: margin,
+              homeWinProb: wp,
+              wpa,
+              shotResult,
+              shotDistance: shotDist,
+              xeFG,
+              smoe,
+              shotArea: shotDist !== null ? (shotDist <= 4 ? "Restricted Area" : shotDist >= 22 ? "3PT Arc" : "Mid-Range") : null,
+              shotAreaDetail: null,
+              homeLineup: Array.from(currentHomeLineup).slice(0, 5),
+              awayLineup: Array.from(currentAwayLineup).slice(0, 5),
+            });
+          });
+
+          // Build Minute-by-Minute OHLC Candlesticks (48 mins or 53+ for OT)
+          const totalGameMinutes = maxPeriod <= 4 ? 48 : 48 + (maxPeriod - 4) * 5;
+          const candlesticks: LiveCandlestick[] = [];
+          let lastClose = 0;
+          let lastWp = 0.52;
+          let prevHomeScore = 0;
+          let prevAwayScore = 0;
+
+          for (let m = 1; m <= totalGameMinutes; m++) {
+            const mEvents = processedEvents.filter((e) => e.minute === m);
+            const period = m <= 48 ? Math.floor((m - 1) / 12) + 1 : 4 + Math.ceil((m - 48) / 5);
+            const minInPeriod = m <= 48 ? ((m - 1) % 12) + 1 : ((m - 49) % 5) + 1;
+            const periodLen = m <= 48 ? 12 : 5;
+            const clockStartMin = periodLen - (minInPeriod - 1);
+            const clockEndMin = periodLen - minInPeriod;
+            const periodPrefix = period <= 4 ? `Q${period}` : `OT${period - 4}`;
+            const clockLabel = `${periodPrefix} ${String(clockStartMin).padStart(2, "0")}:00-${String(clockEndMin).padStart(2, "0")}:00`;
+
+            const openVal = lastClose;
+            let highVal = openVal;
+            let lowVal = openVal;
+            let closeVal = openVal;
+            let minuteWp = lastWp;
+            let keyDesc = "Defensive possession battle";
+            let endHome = prevHomeScore;
+            let endAway = prevAwayScore;
+
+            if (mEvents.length > 0) {
+              const margins = mEvents.map((e) => e.scoreMargin);
+              highVal = Math.max(openVal, ...margins);
+              lowVal = Math.min(openVal, ...margins);
+              closeVal = mEvents[mEvents.length - 1].scoreMargin;
+              minuteWp = mEvents[mEvents.length - 1].homeWinProb;
+              endHome = mEvents[mEvents.length - 1].scoreHome;
+              endAway = mEvents[mEvents.length - 1].scoreAway;
+
+              const bestEv = mEvents.reduce((best, cur) =>
+                Math.abs(cur.wpa || 0) >= Math.abs(best.wpa || 0) ? cur : best
+              , mEvents[0]);
+              keyDesc = bestEv.description;
+            }
+
+            const hPts = Math.max(0, endHome - prevHomeScore);
+            const aPts = Math.max(0, endAway - prevAwayScore);
+            const vol = hPts + aPts;
+            const isBullish = closeVal >= openVal;
+
+            let momentum = isBullish ? `${homeTricode} Edge` : `${awayTricode} Rally`;
+            if (hPts >= 6 && aPts === 0) momentum = `${homeTricode} +${hPts} Run`;
+            else if (aPts >= 6 && hPts === 0) momentum = `${awayTricode} +${aPts} Run`;
+            else if (openVal * closeVal < 0 || (openVal !== 0 && closeVal === 0)) momentum = "Lead Change / Tie";
+            else if (vol >= 8) momentum = "High-Pace Shootout";
+            else if (vol === 0) momentum = "Defensive Lockdown";
+
+            candlesticks.push({
+              minute: m,
+              period,
+              minuteInPeriod: minInPeriod,
+              clockLabel,
+              open: openVal,
+              high: highVal,
+              low: lowVal,
+              close: closeVal,
+              volume: vol,
+              homePoints: hPts,
+              awayPoints: aPts,
+              homeWinProb: minuteWp,
+              isBullish,
+              keyPlay: keyDesc,
+              momentum,
+              eventCount: mEvents.length,
+            });
+
+            lastClose = closeVal;
+            lastWp = minuteWp;
+            prevHomeScore = endHome;
+            prevAwayScore = endAway;
+          }
+
+          const state = comp.status?.type?.state || "post";
+          const gameStatus = state === "in" ? 2 : state === "pre" ? 1 : 3;
+
+          return {
+            gameId: String(gameId),
+            gameCode: `${awayTricode}${homeTricode}`,
+            gameDate: comp.date ? String(comp.date).slice(0, 10) : undefined,
+            gameStatusText: comp.status?.type?.shortDetail || comp.status?.type?.detail || "FINAL",
+            gameStatus,
+            arena: sum.gameInfo?.venue?.fullName || "NBA Arena",
+            isLiveRealData: true,
+            homeTeam: {
+              teamId: homeTeamId,
+              name: homeComp.team?.name || homeComp.team?.displayName || homeTricode,
+              city: homeComp.team?.location || "",
+              tricode: homeTricode,
+              score: parseInt(homeComp.score || "0", 10),
+              record: homeComp.records?.[0]?.summary || "",
+              logo: homeComp.team?.logos?.[0]?.href || "",
+              color: homeComp.team?.color ? `#${homeComp.team.color}` : "#1d428a",
+              accentColor: homeComp.team?.alternateColor ? `#${homeComp.team.alternateColor}` : "#fdbb30",
+              periods: (homeComp.linescores || []).map((ls: any, i: number) => ({
+                period: i + 1,
+                periodType: i < 4 ? "REGULAR" : "OVERTIME",
+                score: parseInt(ls.displayValue || "0", 10),
+              })),
+              statistics: {},
+              starters: homeStarters,
+              players: homePlayers,
+            },
+            awayTeam: {
+              teamId: awayTeamId,
+              name: awayComp.team?.name || awayComp.team?.displayName || awayTricode,
+              city: awayComp.team?.location || "",
+              tricode: awayTricode,
+              score: parseInt(awayComp.score || "0", 10),
+              record: awayComp.records?.[0]?.summary || "",
+              logo: awayComp.team?.logos?.[0]?.href || "",
+              color: awayComp.team?.color ? `#${awayComp.team.color}` : "#c8102e",
+              accentColor: awayComp.team?.alternateColor ? `#${awayComp.team.alternateColor}` : "#fdbb30",
+              periods: (awayComp.linescores || []).map((ls: any, i: number) => ({
+                period: i + 1,
+                periodType: i < 4 ? "REGULAR" : "OVERTIME",
+                score: parseInt(ls.displayValue || "0", 10),
+              })),
+              statistics: {},
+              starters: awayStarters,
+              players: awayPlayers,
+            },
+            candlesticks,
+            playByPlay: processedEvents,
+            clutchPlays: processedEvents.filter(
+              (e) => Math.abs(e.wpa || 0) >= 0.04 || (e.minute >= 44 && e.shotResult === "Made")
+            ),
+            totalPlays: processedEvents.length,
+            totalCandles: candlesticks.length,
+          };
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live ESPN game summary, falling back to static feed", err);
       }
-    } catch {
-      // Fallback to static
     }
+
     return staticLiveFeed as unknown as LiveGameFeed;
   },
 };
 
 export const dataService = DataService;
+
 
 

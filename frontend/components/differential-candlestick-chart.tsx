@@ -59,9 +59,9 @@ export function DifferentialCandlestickChart({
   }, [candlesticks]);
 
   // Scales
-  const totalMinutes = 48;
+  const totalMinutes = Math.max(48, candlesticks.length);
   const colWidth = chartWidth / totalMinutes;
-  const candleBodyWidth = Math.max(6, colWidth * 0.72);
+  const candleBodyWidth = Math.max(5, colWidth * 0.72);
 
   const getYMargin = (val: number) => {
     const range = maxMargin - minMargin;

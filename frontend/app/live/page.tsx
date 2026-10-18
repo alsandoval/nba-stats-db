@@ -1,55 +1,97 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   dataService,
   LiveGameFeed,
   LiveScoreboard,
-  LivePlayEvent,
   LivePlayerStat,
 } from "@/lib/data-service";
 import { DifferentialCandlestickChart } from "@/components/differential-candlestick-chart";
 
 export default function LiveGameCompanionPage() {
   const [scoreboard, setScoreboard] = useState<LiveScoreboard | null>(null);
-  const [selectedGameId, setSelectedGameId] = useState<string>("0022300001");
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedGameId, setSelectedGameId] = useState<string>("");
   const [gameFeed, setGameFeed] = useState<LiveGameFeed | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loadingScoreboard, setLoadingScoreboard] = useState<boolean>(true);
+  const [loadingGame, setLoadingGame] = useState<boolean>(true);
+  const [lastRefreshed, setLastRefreshed] = useState<string>("");
 
   // Playback / Replay state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(2); // 1x, 2x, 5x, 10x
-  const [currentMinute, setCurrentMinute] = useState<number>(48); // default to end of game or live
+  const [currentMinute, setCurrentMinute] = useState<number>(48);
   const [pbpFilter, setPbpFilter] = useState<"all" | "scoring" | "clutch" | "shots">("all");
+  const [leftTab, setLeftTab] = useState<"floor" | "boxscore">("floor");
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pbpScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Load scoreboard and game feed
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      const [sb, feed] = await Promise.all([
-        dataService.getLiveScoreboard(),
-        dataService.getLiveGameFeed(selectedGameId),
-      ]);
-      setScoreboard(sb);
-      setGameFeed(feed);
-      setLoading(false);
+  // Load scoreboard (either latest active slate or specific date)
+  const loadScoreboard = useCallback(async (dateOverride?: string) => {
+    setLoadingScoreboard(true);
+    const sb = await dataService.getLiveScoreboard(dateOverride);
+    setScoreboard(sb);
+    if (sb.activeDate) {
+      setSelectedDate(sb.activeDate);
     }
-    loadData();
-  }, [selectedGameId]);
+    if (sb.games && sb.games.length > 0) {
+      setSelectedGameId((prev) => {
+        const exists = sb.games.some((g) => g.gameId === prev);
+        return exists ? prev : sb.games[0].gameId;
+      });
+    }
+    setLastRefreshed(new Date().toLocaleTimeString());
+    setLoadingScoreboard(false);
+  }, []);
+
+  // Initial scoreboard load
+  useEffect(() => {
+    loadScoreboard();
+  }, [loadScoreboard]);
+
+  // Load selected game's play-by-play, candlesticks, and boxscore
+  const loadGameFeed = useCallback(async (gid: string, keepMinute = false) => {
+    if (!gid) return;
+    setLoadingGame(true);
+    const feed = await dataService.getLiveGameFeed(gid);
+    setGameFeed(feed);
+    if (!keepMinute) {
+      setCurrentMinute(feed.candlesticks?.length || 48);
+      setIsPlaying(false);
+    }
+    setLastRefreshed(new Date().toLocaleTimeString());
+    setLoadingGame(false);
+  }, []);
+
+  useEffect(() => {
+    if (selectedGameId) {
+      loadGameFeed(selectedGameId, false);
+    }
+  }, [selectedGameId, loadGameFeed]);
+
+  // Auto-poll every 15 seconds if the currently selected game is LIVE in-progress
+  useEffect(() => {
+    if (!gameFeed || gameFeed.gameStatus !== 2 || !selectedGameId) return;
+    const poll = setInterval(() => {
+      loadScoreboard(selectedDate || undefined);
+      loadGameFeed(selectedGameId, true);
+    }, 15000);
+    return () => clearInterval(poll);
+  }, [gameFeed, selectedGameId, selectedDate, loadScoreboard, loadGameFeed]);
+
+  const maxMinutes = gameFeed?.candlesticks?.length || 48;
 
   // Playback timer loop
   useEffect(() => {
     if (isPlaying) {
-      const intervalMs = Math.max(200, Math.floor(1200 / playbackSpeed));
+      const intervalMs = Math.max(180, Math.floor(1100 / playbackSpeed));
       timerRef.current = setInterval(() => {
         setCurrentMinute((prev) => {
-          if (prev >= 48) {
+          if (prev >= maxMinutes) {
             setIsPlaying(false);
-            return 48;
+            return maxMinutes;
           }
           return prev + 1;
         });
@@ -61,7 +103,19 @@ export default function LiveGameCompanionPage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, playbackSpeed]);
+  }, [isPlaying, playbackSpeed, maxMinutes]);
+
+  // Shift date helper (-1 or +1 day)
+  const shiftDate = (daysDelta: number) => {
+    const base = selectedDate ? new Date(`${selectedDate}T12:00:00`) : new Date();
+    base.setDate(base.getDate() + daysDelta);
+    const y = base.getFullYear();
+    const m = String(base.getMonth() + 1).padStart(2, "0");
+    const d = String(base.getDate()).padStart(2, "0");
+    const nextIso = `${y}-${m}-${d}`;
+    setSelectedDate(nextIso);
+    loadScoreboard(nextIso);
+  };
 
   // Current minute's play-by-play events (up to current minute)
   const activePlays = useMemo(() => {
@@ -80,7 +134,9 @@ export default function LiveGameCompanionPage() {
     if (!activePlays) return [];
     let list = [...activePlays];
     if (pbpFilter === "scoring") {
-      list = list.filter((p) => p.actionType.includes("pt") || p.actionType.includes("freethrow"));
+      list = list.filter(
+        (p) => p.shotResult === "Made" || p.actionType.includes("pt") || p.actionType.includes("freethrow")
+      );
     } else if (pbpFilter === "clutch") {
       list = list.filter((p) => Math.abs(p.wpa || 0) >= 0.035 || (p.minute >= 44 && p.shotResult === "Made"));
     } else if (pbpFilter === "shots") {
@@ -95,6 +151,41 @@ export default function LiveGameCompanionPage() {
   const currentMargin = currentHomeScore - currentAwayScore;
   const currentWinProb = latestPlay ? latestPlay.homeWinProb : 0.5;
 
+  // Dynamic Lead Changes, Times Tied, Biggest Lead from actual candlesticks/plays
+  const gameSwingMetrics = useMemo(() => {
+    if (!gameFeed || gameFeed.playByPlay.length === 0) {
+      return { leadChanges: 0, timesTied: 0, biggestLeadStr: "Even" };
+    }
+    let leadChanges = 0;
+    let timesTied = 0;
+    let prevSign = 0;
+    let maxHomeLead = 0;
+    let maxAwayLead = 0;
+    let prevMargin = 0;
+
+    for (const ev of gameFeed.playByPlay) {
+      const m = ev.scoreMargin;
+      const sign = m > 0 ? 1 : m < 0 ? -1 : 0;
+      if (sign !== 0 && prevSign !== 0 && sign !== prevSign) {
+        leadChanges++;
+      }
+      if (m === 0 && prevMargin !== 0) {
+        timesTied++;
+      }
+      if (m > maxHomeLead) maxHomeLead = m;
+      if (-m > maxAwayLead) maxAwayLead = -m;
+      if (sign !== 0) prevSign = sign;
+      prevMargin = m;
+    }
+
+    const biggestLeadStr =
+      maxHomeLead >= maxAwayLead
+        ? `${gameFeed.homeTeam.tricode} +${maxHomeLead}`
+        : `${gameFeed.awayTeam.tricode} +${maxAwayLead}`;
+
+    return { leadChanges, timesTied, biggestLeadStr };
+  }, [gameFeed]);
+
   // Active 5 players on floor for each team at current minute
   const { currentHomeLineup, currentAwayLineup } = useMemo(() => {
     if (!gameFeed) return { currentHomeLineup: [], currentAwayLineup: [] };
@@ -105,90 +196,194 @@ export default function LiveGameCompanionPage() {
     const aList = gameFeed.awayTeam.players.filter((p) => awayPlayerIds.includes(p.personId));
 
     return {
-      currentHomeLineup: hList.length > 0 ? hList : gameFeed.homeTeam.players.slice(0, 5),
-      currentAwayLineup: aList.length > 0 ? aList : gameFeed.awayTeam.players.slice(0, 5),
+      currentHomeLineup: hList.length >= 5 ? hList.slice(0, 5) : gameFeed.homeTeam.players.slice(0, 5),
+      currentAwayLineup: aList.length >= 5 ? aList.slice(0, 5) : gameFeed.awayTeam.players.slice(0, 5),
     };
   }, [gameFeed, latestPlay]);
 
+  // Top Performer for each team (dynamically computed from real boxscore)
+  const { homeLeader, awayLeader } = useMemo(() => {
+    const pickBest = (players: LivePlayerStat[]): LivePlayerStat | null => {
+      if (!players || players.length === 0) return null;
+      return [...players].sort(
+        (a, b) =>
+          b.points + b.rebounds * 1.2 + b.assists * 1.5 - (a.points + a.rebounds * 1.2 + a.assists * 1.5)
+      )[0];
+    };
+    return {
+      homeLeader: pickBest(gameFeed?.homeTeam.players || []),
+      awayLeader: pickBest(gameFeed?.awayTeam.players || []),
+    };
+  }, [gameFeed]);
+
   // Jump to decisive clutch plays (Minute 44+)
   const jumpToClutch = () => {
-    setCurrentMinute(44);
+    setCurrentMinute(Math.min(maxMinutes, 44));
     setIsPlaying(true);
   };
 
-  if (loading || !gameFeed) {
+  if ((loadingScoreboard && !scoreboard) || (!gameFeed && loadingGame)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-white">
         <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="font-mono text-sm text-gray-400">Loading Live NBA Companion Feed & Candlesticks...</p>
+        <p className="font-mono text-sm text-gray-400">
+          Connecting to Live NBA Scoreboard &amp; Play-by-Play Stream...
+        </p>
       </div>
     );
   }
+
+  if (!gameFeed) return null;
 
   const { homeTeam, awayTeam, candlesticks } = gameFeed;
 
   return (
     <div className="min-h-screen bg-background text-gray-100 flex flex-col pb-16">
-      {/* 1. TOP LIVE SCOREBOARD TICKER */}
-      <section className="bg-surface/90 border-b border-borderDark px-4 py-2 sticky top-[57px] z-40 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Active Games Switcher */}
-          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
-            <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider font-bold">Games:</span>
+      {/* 1. TOP LIVE SCOREBOARD TICKER & DATE PICKER */}
+      <section className="bg-surface/95 border-b border-borderDark px-4 py-2.5 sticky top-[57px] z-40 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto flex flex-col gap-2.5">
+          {/* Row 1: Date Picker, Quick Slates & Live Refresh */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-borderDark/50 pb-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider font-bold mr-1">
+                NBA Date:
+              </span>
+              <button
+                onClick={() => shiftDate(-1)}
+                className="px-2 py-1 rounded bg-surfaceCard hover:bg-surface border border-borderDark text-xs font-mono text-gray-300 hover:text-white transition"
+                title="Previous Day"
+              >
+                ◀ Prev
+              </button>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  if (e.target.value) loadScoreboard(e.target.value);
+                }}
+                className="bg-surfaceCard border border-borderDark rounded px-2.5 py-1 text-xs font-mono text-white focus:outline-none focus:border-accent"
+              />
+              <button
+                onClick={() => shiftDate(1)}
+                className="px-2 py-1 rounded bg-surfaceCard hover:bg-surface border border-borderDark text-xs font-mono text-gray-300 hover:text-white transition"
+                title="Next Day"
+              >
+                Next ▶
+              </button>
+
+              <button
+                onClick={() => loadScoreboard()}
+                className="ml-1 px-2.5 py-1 rounded bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent text-xs font-mono font-bold transition"
+              >
+                🔥 Latest Active Slate
+              </button>
+            </div>
+
+            {/* Live Status & Refresh */}
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <button
+                onClick={() => {
+                  loadScoreboard(selectedDate || undefined);
+                  if (selectedGameId) loadGameFeed(selectedGameId, true);
+                }}
+                className="px-2.5 py-1 rounded bg-surfaceCard hover:bg-surface border border-borderDark text-gray-300 hover:text-white transition flex items-center gap-1"
+              >
+                <span>🔄 Refresh</span>
+                {lastRefreshed && <span className="text-[10px] text-gray-500">({lastRefreshed})</span>}
+              </button>
+              <div className="flex items-center gap-1.5 bg-emerald-950/50 text-emerald-400 border border-emerald-800/50 px-2.5 py-1 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-bold tracking-wider text-[11px]">
+                  {gameFeed.isLiveRealData ? "REAL NBA LIVE API" : "SNAPSHOT FEED"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Scrollable Game Switcher Cards for Selected Date */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-borderDark">
+            <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider font-bold whitespace-nowrap">
+              {scoreboard?.games.length || 0} Games:
+            </span>
             {scoreboard?.games.map((g) => {
               const active = g.gameId === selectedGameId;
               return (
                 <button
                   key={g.gameId}
                   onClick={() => setSelectedGameId(g.gameId)}
-                  className={`px-3 py-1 rounded-lg text-xs font-mono transition flex items-center gap-2 border whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition flex items-center gap-2.5 border whitespace-nowrap ${
                     active
                       ? "bg-accent/20 border-accent text-white shadow-sm font-bold"
-                      : "bg-surfaceCard/80 border-borderDark text-gray-400 hover:text-white hover:bg-surfaceCard"
+                      : "bg-surfaceCard/80 border-borderDark text-gray-300 hover:text-white hover:bg-surfaceCard"
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${g.gameStatus === 2 ? "bg-red-500 animate-ping" : "bg-emerald-400"}`} />
-                  <span>{g.homeTeam.tricode} {g.homeTeam.score} - {g.awayTeam.tricode} {g.awayTeam.score}</span>
-                  <span className="text-[10px] text-gray-400 font-normal">({g.gameStatusText.split(" ")[0]})</span>
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      g.gameStatus === 2
+                        ? "bg-red-500 animate-ping"
+                        : g.gameStatus === 1
+                        ? "bg-amber-400"
+                        : "bg-emerald-400"
+                    }`}
+                  />
+                  <span>
+                    {g.awayTeam.tricode} <strong className="text-white">{g.awayTeam.score}</strong> @{" "}
+                    {g.homeTeam.tricode} <strong className="text-white">{g.homeTeam.score}</strong>
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-normal px-1.5 py-0.5 bg-surface rounded">
+                    {g.gameStatusText}
+                  </span>
                 </button>
               );
             })}
-          </div>
-
-          {/* Live Status Pill */}
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <div className="flex items-center gap-1.5 bg-red-950/40 text-red-400 border border-red-800/50 px-2.5 py-0.5 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="font-bold tracking-wider">LIVE SYNC ACTIVE</span>
-            </div>
-            <span className="text-gray-400 hidden lg:inline">Low-latency play-by-play stream</span>
           </div>
         </div>
       </section>
 
       {/* 2. MARQUEE GAME BANNER & DIGITAL SCOREBOARD */}
-      <section className="max-w-7xl mx-auto w-full px-4 pt-6">
+      <section className="max-w-7xl mx-auto w-full px-4 pt-5 relative">
+        {loadingGame && (
+          <div className="absolute inset-0 z-30 bg-background/60 backdrop-blur-xs flex items-center justify-center rounded-2xl">
+            <div className="bg-surfaceCard border border-borderDark px-4 py-2 rounded-xl text-xs font-mono text-white flex items-center gap-2 shadow-xl">
+              <span className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+              Loading Play-by-Play &amp; Candlesticks...
+            </div>
+          </div>
+        )}
+
         <div className="bg-gradient-to-r from-surfaceCard via-surface to-surfaceCard border border-borderDark rounded-2xl p-5 md:p-6 shadow-2xl relative overflow-hidden">
-          {/* Subtle Court Line Graphic in Background */}
           <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]" />
 
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
             {/* Away Team Card */}
             <div className="md:col-span-4 flex items-center gap-4">
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-lg border border-white/10"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg border border-white/10 overflow-hidden shrink-0"
                 style={{ backgroundColor: awayTeam.color }}
               >
-                {awayTeam.tricode}
+                {awayTeam.logo ? (
+                  <img src={awayTeam.logo} alt={awayTeam.tricode} className="w-11 h-11 object-contain" />
+                ) : (
+                  awayTeam.tricode
+                )}
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">{awayTeam.city}</span>
+                <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">
+                  {awayTeam.city || "Away"}
+                </span>
                 <h2 className="text-xl md:text-2xl font-black text-white">{awayTeam.name}</h2>
-                <span className="text-xs text-gray-400 font-mono">48-34 • 2nd Seed East</span>
+                <span className="text-xs text-gray-400 font-mono">
+                  {awayTeam.record ? `${awayTeam.record} • Road` : awayTeam.tricode}
+                </span>
               </div>
               <div className="ml-auto text-right">
-                <span className="text-4xl md:text-5xl font-black text-white tracking-tight">{currentAwayScore}</span>
-                <div className="text-[10px] text-gray-400 font-mono mt-0.5">Bonus: IN</div>
+                <span className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                  {currentAwayScore}
+                </span>
+                <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+                  Final: {awayTeam.score}
+                </div>
               </div>
             </div>
 
@@ -196,19 +391,27 @@ export default function LiveGameCompanionPage() {
             <div className="md:col-span-4 flex flex-col items-center justify-center text-center px-2 py-3 bg-surface/80 rounded-xl border border-borderDark/80">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-bold text-accent tracking-wider font-mono bg-accent/10 px-2 py-0.5 rounded border border-accent/20">
-                  {currentMinute >= 48 ? "FINAL" : `Q${Math.min(4, Math.floor((currentMinute - 1) / 12) + 1)} MIN ${currentMinute}`}
+                  {currentMinute >= maxMinutes
+                    ? gameFeed.gameStatusText
+                    : latestPlay
+                    ? `${latestPlay.period <= 4 ? `Q${latestPlay.period}` : `OT${latestPlay.period - 4}`} • MIN ${currentMinute}`
+                    : `MIN ${currentMinute}`}
                 </span>
-                <span className="text-xs text-gray-400 font-mono">• {gameFeed.arena}</span>
+                <span className="text-xs text-gray-400 font-mono truncate max-w-[180px]">
+                  • {gameFeed.arena}
+                </span>
               </div>
 
               {/* Game Clock Display */}
               <div className="text-2xl md:text-3xl font-black font-mono tracking-wider text-white">
-                {latestPlay?.clock ? latestPlay.clock.replace("PT", "").replace(".00S", "").replace("M", ":") : "00:00"}
+                {latestPlay?.clock
+                  ? latestPlay.clock.replace("PT", "").replace(".00S", "").replace("M", ":")
+                  : "00:00"}
               </div>
 
               {/* Possession Arrow Indicator */}
               <div className="flex items-center gap-2 mt-1.5 text-xs font-mono">
-                <span className="text-gray-400">Possession:</span>
+                <span className="text-gray-400">Active Ball:</span>
                 <span className="flex items-center gap-1 font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30 animate-pulse">
                   🏀 {latestPlay?.teamTricode || homeTeam.tricode}
                 </span>
@@ -225,7 +428,11 @@ export default function LiveGameCompanionPage() {
                       : "bg-surfaceCard text-gray-300 border border-borderDark"
                   }`}
                 >
-                  {currentMargin > 0 ? `+${currentMargin} ${homeTeam.tricode}` : currentMargin < 0 ? `+${Math.abs(currentMargin)} ${awayTeam.tricode}` : "TIED"}
+                  {currentMargin > 0
+                    ? `+${currentMargin} ${homeTeam.tricode}`
+                    : currentMargin < 0
+                    ? `+${Math.abs(currentMargin)} ${awayTeam.tricode}`
+                    : "TIED"}
                 </span>
 
                 <span className="bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded font-bold">
@@ -237,37 +444,63 @@ export default function LiveGameCompanionPage() {
             {/* Home Team Card */}
             <div className="md:col-span-4 flex items-center justify-end gap-4">
               <div className="mr-auto text-left md:order-1">
-                <span className="text-4xl md:text-5xl font-black text-white tracking-tight">{currentHomeScore}</span>
-                <div className="text-[10px] text-gray-400 font-mono mt-0.5">Bonus: IN</div>
+                <span className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                  {currentHomeScore}
+                </span>
+                <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+                  Final: {homeTeam.score}
+                </div>
               </div>
               <div className="flex flex-col text-right md:order-2">
-                <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">{homeTeam.city}</span>
+                <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">
+                  {homeTeam.city || "Home"}
+                </span>
                 <h2 className="text-xl md:text-2xl font-black text-white">{homeTeam.name}</h2>
-                <span className="text-xs text-gray-400 font-mono">47-35 • 6th Seed East</span>
+                <span className="text-xs text-gray-400 font-mono">
+                  {homeTeam.record ? `${homeTeam.record} • Home` : homeTeam.tricode}
+                </span>
               </div>
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-lg border border-white/10 md:order-3"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg border border-white/10 overflow-hidden shrink-0 md:order-3"
                 style={{ backgroundColor: homeTeam.color }}
               >
-                {homeTeam.tricode}
+                {homeTeam.logo ? (
+                  <img src={homeTeam.logo} alt={homeTeam.tricode} className="w-11 h-11 object-contain" />
+                ) : (
+                  homeTeam.tricode
+                )}
               </div>
             </div>
           </div>
 
-          {/* Quarter by Quarter Linescore Mini-Table */}
+          {/* Dynamic Quarter-by-Quarter Linescore Mini-Table */}
           <div className="mt-5 pt-4 border-t border-borderDark/60 flex flex-wrap items-center justify-between text-xs font-mono gap-4">
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-4">
               <span className="text-gray-400 font-bold">Linescore:</span>
-              <div className="flex items-center gap-4">
-                <span className="text-gray-400">{awayTeam.tricode}: 26 | 27 | 34 | 29 = <strong className="text-white">116</strong></span>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-gray-300">
+                  <strong className="text-white">{awayTeam.tricode}:</strong>{" "}
+                  {awayTeam.periods.map((p) => p.score).join(" | ")} ={" "}
+                  <strong className="text-white">{awayTeam.score}</strong>
+                </span>
                 <span className="text-gray-500">vs</span>
-                <span className="text-gray-400">{homeTeam.tricode}: 36 | 34 | 18 | 33 = <strong className="text-white">121</strong></span>
+                <span className="text-gray-300">
+                  <strong className="text-white">{homeTeam.tricode}:</strong>{" "}
+                  {homeTeam.periods.map((p) => p.score).join(" | ")} ={" "}
+                  <strong className="text-white">{homeTeam.score}</strong>
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-4 text-[11px] text-gray-400">
-              <span>Lead Changes: <strong className="text-white">10</strong></span>
-              <span>Times Tied: <strong className="text-white">4</strong></span>
-              <span>Biggest Lead: <strong className="text-white">IND +18</strong></span>
+              <span>
+                Lead Changes: <strong className="text-white">{gameSwingMetrics.leadChanges}</strong>
+              </span>
+              <span>
+                Times Tied: <strong className="text-white">{gameSwingMetrics.timesTied}</strong>
+              </span>
+              <span>
+                Biggest Lead: <strong className="text-white">{gameSwingMetrics.biggestLeadStr}</strong>
+              </span>
             </div>
           </div>
         </div>
@@ -276,10 +509,12 @@ export default function LiveGameCompanionPage() {
       {/* 3. INTERACTIVE REPLAY & SIMULATION DECK */}
       <section className="max-w-7xl mx-auto w-full px-4 pt-4">
         <div className="bg-surfaceCard border border-borderDark rounded-xl p-3 md:p-4 shadow-card flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Controls: Play/Pause & Step Buttons */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={() => {
+                if (currentMinute >= maxMinutes) setCurrentMinute(1);
+                setIsPlaying(!isPlaying);
+              }}
               className={`px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition ${
                 isPlaying
                   ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
@@ -289,7 +524,6 @@ export default function LiveGameCompanionPage() {
               <span>{isPlaying ? "⏸ PAUSE" : "▶ PLAY REPLAY"}</span>
             </button>
 
-            {/* Rewind to Start */}
             <button
               onClick={() => {
                 setCurrentMinute(1);
@@ -301,12 +535,11 @@ export default function LiveGameCompanionPage() {
               ⏮ Tip-off
             </button>
 
-            {/* Jump to Clutch */}
             <button
               onClick={jumpToClutch}
               className="px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
             >
-              ⚡ Jump to Clutch (Q4 Dagger)
+              ⚡ Jump to Clutch (Q4)
             </button>
           </div>
 
@@ -316,14 +549,16 @@ export default function LiveGameCompanionPage() {
             <input
               type="range"
               min="1"
-              max="48"
+              max={maxMinutes}
               value={currentMinute}
               onChange={(e) => {
-                setCurrentMinute(parseInt(e.target.value));
+                setCurrentMinute(parseInt(e.target.value, 10));
               }}
               className="w-full h-2 bg-surface rounded-lg appearance-none cursor-pointer accent-accent"
             />
-            <span className="text-xs font-mono text-gray-400 whitespace-nowrap">Q4 00:00</span>
+            <span className="text-xs font-mono text-gray-400 whitespace-nowrap">
+              {maxMinutes > 48 ? "OT 00:00" : "Q4 00:00"}
+            </span>
             <span className="bg-surface border border-borderDark px-2.5 py-1 rounded text-xs font-bold font-mono text-white min-w-[54px] text-center">
               m{currentMinute}
             </span>
@@ -361,109 +596,193 @@ export default function LiveGameCompanionPage() {
         />
       </section>
 
-      {/* 5. SPLIT VIEW: ON-COURT 10-PLAYER LINEUP CARDS & LIVE QUANT PLAY-BY-PLAY */}
+      {/* 5. SPLIT VIEW: ON-COURT LINEUPS / FULL BOXSCORE & LIVE QUANT PLAY-BY-PLAY */}
       <section className="max-w-7xl mx-auto w-full px-4 pt-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN: ACTIVE 10 PLAYERS ON THE FLOOR & STATS (5 cols) */}
+        {/* LEFT COLUMN: ACTIVE 10 PLAYERS OR FULL BOXSCORE (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
-          {/* Active Lineup Summary Card */}
           <div className="bg-surfaceCard border border-borderDark rounded-xl p-4 shadow-card">
-            <div className="flex items-center justify-between border-b border-borderDark/60 pb-2 mb-3">
-              <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                <span>🛡️</span> ACTIVE 10-PLAYER FLOOR LINEUPS
-              </h3>
-              <span className="text-[11px] font-mono text-gray-400">At Minute {currentMinute}</span>
+            <div className="flex items-center justify-between border-b border-borderDark/60 pb-2.5 mb-3">
+              <div className="flex items-center gap-1 bg-surface border border-borderDark rounded-lg p-0.5 text-xs font-mono">
+                <button
+                  onClick={() => setLeftTab("floor")}
+                  className={`px-2.5 py-1 rounded transition ${
+                    leftTab === "floor" ? "bg-accent text-white font-bold" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  🛡️ On-Court 10 (m{currentMinute})
+                </button>
+                <button
+                  onClick={() => setLeftTab("boxscore")}
+                  className={`px-2.5 py-1 rounded transition ${
+                    leftTab === "boxscore" ? "bg-accent text-white font-bold" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  📋 Full Boxscore
+                </button>
+              </div>
+              <span className="text-[11px] font-mono text-gray-400">
+                {homeTeam.players.length + awayTeam.players.length} Active
+              </span>
             </div>
 
-            {/* Home 5-Man On Court */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-xs font-bold text-gray-300 mb-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: homeTeam.color }} />
-                  {homeTeam.name} On Floor ({homeTeam.tricode})
-                </span>
-                <span className="font-mono text-emerald-400">Lead: +{Math.max(0, currentMargin)}</span>
-              </div>
+            {leftTab === "floor" ? (
+              <>
+                {/* Home 5-Man On Court */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-300 mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: homeTeam.color }} />
+                      {homeTeam.name} On Floor ({homeTeam.tricode})
+                    </span>
+                    <span className="font-mono text-emerald-400">
+                      {currentMargin >= 0 ? `Lead: +${currentMargin}` : `Deficit: ${currentMargin}`}
+                    </span>
+                  </div>
 
-              <div className="space-y-1.5">
-                {currentHomeLineup.map((p) => (
-                  <div
-                    key={`home-lineup-${p.personId}`}
-                    className="flex items-center justify-between bg-surface/70 border border-borderDark/50 rounded-lg px-3 py-1.5 text-xs font-mono"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 font-bold w-5">{p.jerseyNum}</span>
-                      <span className="text-white font-medium">{p.name}</span>
-                      <span className="text-[10px] text-gray-400">({p.position})</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px]">
-                      <span>{p.points} PTS</span>
-                      <span className="text-gray-400">{p.rebounds} REB</span>
-                      <span className="text-gray-400">{p.assists} AST</span>
-                      <span className={`font-bold ${p.plusMinus >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {p.plusMinus >= 0 ? `+${p.plusMinus}` : p.plusMinus}
+                  <div className="space-y-1.5">
+                    {currentHomeLineup.map((p) => (
+                      <div
+                        key={`home-lineup-${p.personId}`}
+                        className="flex items-center justify-between bg-surface/70 border border-borderDark/50 rounded-lg px-3 py-1.5 text-xs font-mono"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="text-gray-400 font-bold w-5">{p.jerseyNum}</span>
+                          <span className="text-white font-medium truncate">{p.name}</span>
+                          <span className="text-[10px] text-gray-400">({p.position})</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-[11px] shrink-0">
+                          <span>{p.points} PTS</span>
+                          <span className="text-gray-400">{p.rebounds} REB</span>
+                          <span className="text-gray-400">{p.assists} AST</span>
+                          <span className={`font-bold ${p.plusMinus >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                            {p.plusMinus >= 0 ? `+${p.plusMinus}` : p.plusMinus}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Away 5-Man On Court */}
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-300 mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: awayTeam.color }} />
+                      {awayTeam.name} On Floor ({awayTeam.tricode})
+                    </span>
+                    <span className="font-mono text-red-400">
+                      {currentMargin <= 0 ? `Lead: +${Math.abs(currentMargin)}` : `Deficit: -${currentMargin}`}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {currentAwayLineup.map((p) => (
+                      <div
+                        key={`away-lineup-${p.personId}`}
+                        className="flex items-center justify-between bg-surface/70 border border-borderDark/50 rounded-lg px-3 py-1.5 text-xs font-mono"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="text-gray-400 font-bold w-5">{p.jerseyNum}</span>
+                          <span className="text-white font-medium truncate">{p.name}</span>
+                          <span className="text-[10px] text-gray-400">({p.position})</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-[11px] shrink-0">
+                          <span>{p.points} PTS</span>
+                          <span className="text-gray-400">{p.rebounds} REB</span>
+                          <span className="text-gray-400">{p.assists} AST</span>
+                          <span className={`font-bold ${p.plusMinus >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                            {p.plusMinus >= 0 ? `+${p.plusMinus}` : p.plusMinus}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Full Team Boxscores View */
+              <div className="max-h-[430px] overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-borderDark">
+                {[awayTeam, homeTeam].map((tm) => (
+                  <div key={`box-${tm.tricode}`}>
+                    <div className="text-xs font-bold text-white mb-1.5 flex items-center justify-between">
+                      <span>
+                        {tm.city} {tm.name} ({tm.tricode})
                       </span>
+                      <span className="text-gray-400 font-mono">{tm.score} PTS</span>
                     </div>
+                    <table className="w-full text-[11px] font-mono text-left border-collapse">
+                      <thead>
+                        <tr className="text-gray-400 border-b border-borderDark">
+                          <th className="py-1">Player</th>
+                          <th className="py-1 text-right">MIN</th>
+                          <th className="py-1 text-right">PTS</th>
+                          <th className="py-1 text-right">REB</th>
+                          <th className="py-1 text-right">AST</th>
+                          <th className="py-1 text-right">FG</th>
+                          <th className="py-1 text-right">+/-</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tm.players.map((p) => (
+                          <tr key={`row-${p.personId}`} className="border-b border-borderDark/30 hover:bg-surface/60">
+                            <td className="py-1 text-white truncate max-w-[125px]">
+                              {p.name} <span className="text-gray-500 text-[9px]">{p.position}</span>
+                            </td>
+                            <td className="py-1 text-right text-gray-400">{p.minutes}</td>
+                            <td className="py-1 text-right font-bold text-white">{p.points}</td>
+                            <td className="py-1 text-right text-gray-300">{p.rebounds}</td>
+                            <td className="py-1 text-right text-gray-300">{p.assists}</td>
+                            <td className="py-1 text-right text-gray-400">{p.fgStr || `${p.fgPct}%`}</td>
+                            <td
+                              className={`py-1 text-right font-bold ${
+                                p.plusMinus >= 0 ? "text-emerald-400" : "text-red-400"
+                              }`}
+                            >
+                              {p.plusMinus >= 0 ? `+${p.plusMinus}` : p.plusMinus}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Away 5-Man On Court */}
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold text-gray-300 mb-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: awayTeam.color }} />
-                  {awayTeam.name} On Floor ({awayTeam.tricode})
-                </span>
-                <span className="font-mono text-red-400">Deficit: -{Math.max(0, currentMargin)}</span>
-              </div>
-
-              <div className="space-y-1.5">
-                {currentAwayLineup.map((p) => (
-                  <div
-                    key={`away-lineup-${p.personId}`}
-                    className="flex items-center justify-between bg-surface/70 border border-borderDark/50 rounded-lg px-3 py-1.5 text-xs font-mono"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400 font-bold w-5">{p.jerseyNum}</span>
-                      <span className="text-white font-medium">{p.name}</span>
-                      <span className="text-[10px] text-gray-400">({p.position})</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px]">
-                      <span>{p.points} PTS</span>
-                      <span className="text-gray-400">{p.rebounds} REB</span>
-                      <span className="text-gray-400">{p.assists} AST</span>
-                      <span className={`font-bold ${p.plusMinus >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {p.plusMinus >= 0 ? `+${p.plusMinus}` : p.plusMinus}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Leading Scorers Head-to-Head */}
+          {/* Dynamically Computed Top Impact Players Head-to-Head */}
           <div className="bg-surfaceCard border border-borderDark rounded-xl p-4 shadow-card">
             <h3 className="text-xs font-extrabold text-white uppercase tracking-wider font-mono mb-3">
-              Top Impact Players of the Game
+              Top Impact Performers ({awayTeam.tricode} vs {homeTeam.tricode})
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              {/* Home Leader (Myles Turner 27 pts or Tyrese Haliburton) */}
-              <div className="p-3 bg-surface rounded-lg border border-borderDark text-xs font-mono">
-                <span className="text-[10px] text-accent font-bold">IND LEADER</span>
-                <div className="font-bold text-white text-sm mt-0.5">Myles Turner</div>
-                <div className="text-gray-400 text-[11px] mt-1">27 PTS • 9 REB • 2 BLK</div>
-                <div className="text-emerald-400 font-bold mt-0.5">+11.0 +/- (9-14 FG)</div>
-              </div>
+              {awayLeader && (
+                <div className="p-3 bg-surface rounded-lg border border-borderDark text-xs font-mono">
+                  <span className="text-[10px] text-red-400 font-bold">{awayTeam.tricode} LEADER</span>
+                  <div className="font-bold text-white text-sm mt-0.5 truncate">{awayLeader.name}</div>
+                  <div className="text-gray-400 text-[11px] mt-1">
+                    {awayLeader.points} PTS • {awayLeader.rebounds} REB • {awayLeader.assists} AST
+                  </div>
+                  <div className="text-gray-300 font-bold mt-0.5">
+                    {awayLeader.plusMinus >= 0 ? `+${awayLeader.plusMinus}` : awayLeader.plusMinus} +/- •{" "}
+                    {awayLeader.fgStr || `${awayLeader.fgPct}% FG`}
+                  </div>
+                </div>
+              )}
 
-              {/* Away Leader (Donovan Mitchell 38 pts) */}
-              <div className="p-3 bg-surface rounded-lg border border-borderDark text-xs font-mono">
-                <span className="text-[10px] text-red-400 font-bold">CLE LEADER</span>
-                <div className="font-bold text-white text-sm mt-0.5">Donovan Mitchell</div>
-                <div className="text-gray-400 text-[11px] mt-1">38 PTS • 5 REB • 9 AST</div>
-                <div className="text-gray-300 font-bold mt-0.5">4-7 3PT • 13-21 FG</div>
-              </div>
+              {homeLeader && (
+                <div className="p-3 bg-surface rounded-lg border border-borderDark text-xs font-mono">
+                  <span className="text-[10px] text-accent font-bold">{homeTeam.tricode} LEADER</span>
+                  <div className="font-bold text-white text-sm mt-0.5 truncate">{homeLeader.name}</div>
+                  <div className="text-gray-400 text-[11px] mt-1">
+                    {homeLeader.points} PTS • {homeLeader.rebounds} REB • {homeLeader.assists} AST
+                  </div>
+                  <div className="text-emerald-400 font-bold mt-0.5">
+                    {homeLeader.plusMinus >= 0 ? `+${homeLeader.plusMinus}` : homeLeader.plusMinus} +/- •{" "}
+                    {homeLeader.fgStr || `${homeLeader.fgPct}% FG`}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -513,7 +832,6 @@ export default function LiveGameCompanionPage() {
               {displayPlays.map((ev, idx) => {
                 const isClutch = Math.abs(ev.wpa || 0) >= 0.04;
                 const isMadeShot = ev.shotResult === "Made";
-                const isThree = ev.actionType === "3pt";
 
                 return (
                   <div
@@ -529,7 +847,8 @@ export default function LiveGameCompanionPage() {
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-400">
-                          Q{ev.period} {ev.clock.replace("PT", "").replace(".00S", "")}
+                          {ev.period <= 4 ? `Q${ev.period}` : `OT${ev.period - 4}`}{" "}
+                          {ev.clock.replace("PT", "").replace(".00S", "")}
                         </span>
                         <span
                           className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
@@ -541,13 +860,12 @@ export default function LiveGameCompanionPage() {
                           {ev.teamTricode}
                         </span>
                         <span className="text-gray-400 text-[11px]">
-                          {ev.scoreHome} - {ev.scoreAway}
+                          { awayTeam.tricode } {ev.scoreAway} - { homeTeam.tricode } {ev.scoreHome}
                         </span>
                       </div>
 
                       {/* Right Badges: WPA & xeFG% */}
                       <div className="flex items-center gap-1.5">
-                        {/* WPA Badge */}
                         {ev.wpa !== undefined && ev.wpa !== 0 && (
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
@@ -555,13 +873,12 @@ export default function LiveGameCompanionPage() {
                                 ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
                                 : "bg-red-950 text-red-300 border border-red-800"
                             }`}
-                            title="Win Probability Added by this Play"
+                            title="Home Win Probability Swing on Play"
                           >
                             {ev.wpa > 0 ? `+${(ev.wpa * 100).toFixed(1)}%` : `${(ev.wpa * 100).toFixed(1)}%`} WPA
                           </span>
                         )}
 
-                        {/* xeFG% Badge */}
                         {ev.xeFG !== null && ev.xeFG !== undefined && (
                           <span
                             className="bg-purple-950/70 text-purple-300 border border-purple-800/60 px-1.5 py-0.5 rounded text-[10px] font-bold"
@@ -575,9 +892,7 @@ export default function LiveGameCompanionPage() {
 
                     {/* Play Description */}
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-gray-100 font-sans text-xs">
-                        {ev.description}
-                      </p>
+                      <p className="text-gray-100 font-sans text-xs">{ev.description}</p>
                       {ev.shotArea && (
                         <span className="text-[10px] text-gray-500 whitespace-nowrap hidden sm:inline">
                           [{ev.shotArea}]
