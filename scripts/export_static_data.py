@@ -3,11 +3,12 @@ export_static_data.py - Extracts and bundles complete 10-season (2015-16 through
 datasets from nba_stats.db for commercial release and GitHub Pages deployment.
 Covers:
   - All 300 team-seasons across 10 seasons (2015-16 to 2024-25)
-  - All 7,128 player-seasons across 10 seasons (stats, advanced, LEBRON, RAPM, 3D clusters, archetypes)
+  - All 5,393 unique player-seasons across 10 seasons (stats, advanced, LEBRON, RAPM, 3D clusters, archetypes, biometrics, hustle, clutch, defense)
   - All 572 players & 30 teams real NBA court zone shooting splits (Restricted Area, Paint, Mid-Range, Corner 3, ATB 3)
-  - All 641 evaluated 5-man lineups (offensive/defensive synergy, spacing, net rating, archetype mix) + 30-team bitmask rosters
+  - All 641 evaluated 5-man lineups + 500 real tracked NBA 5-man lineups (ep_leaguelineupviz) + 30-team bitmask rosters
   - All 450 player contracts, 1,219 multi-year contract schedules, cap sheets (2023-24 & 2024-25), dead money & trade exceptions
-  - All ~13,100 historical Regular Season & Playoff games across the last 10 seasons (2015-16 to 2024-25)
+  - All 12,729 historical Regular Season & Playoff games across the last 10 seasons (2015-16 to 2024-25)
+  - Complete Scouting, Clutch, Hustle, Rim/Perimeter Defense, Draft Value Over Pick Expectation & Combine Anthropometrics + Top 200 Single-Game Masterpieces
 """
 
 import json
@@ -111,6 +112,155 @@ def export_all():
         team_lookup[r["team_id"]] = dict(r)
 
     # =========================================================================
+    # 0. PRE-FETCH BIOMETRICS, HUSTLE, CLUTCH & DEFENSE LOOKUPS
+    # =========================================================================
+    bio_lookup = {}
+    for br in cur.execute("SELECT * FROM ep_leaguedashplayerbiostats_leaguedashplayerbiostats").fetchall():
+        pid = int(br["PLAYER_ID"] or 0)
+        if pid:
+            bio_lookup[pid] = {
+                "height": br["PLAYER_HEIGHT"] or "",
+                "height_inches": int(br["PLAYER_HEIGHT_INCHES"] or 0),
+                "weight": str(br["PLAYER_WEIGHT"] or ""),
+                "college": br["COLLEGE"] or "International / Other",
+                "country": br["COUNTRY"] or "USA",
+                "draft_year": str(br["DRAFT_YEAR"] or "Undrafted"),
+                "draft_round": str(br["DRAFT_ROUND"] or ""),
+                "draft_number": str(br["DRAFT_NUMBER"] or ""),
+            }
+
+    hustle_player_lookup = {}
+    all_hustle_players = []
+    for hr in cur.execute("SELECT * FROM ep_leaguehustlestatsplayer_hustlestatsplayer ORDER BY DEFLECTIONS DESC").fetchall():
+        pid = int(hr["PLAYER_ID"] or 0)
+        gp = max(1, int(hr["G"] or 1))
+        entry = {
+            "player_id": pid,
+            "player_name": hr["PLAYER_NAME"] or "Player",
+            "team_id": int(hr["TEAM_ID"] or 0),
+            "team_abbreviation": hr["TEAM_ABBREVIATION"] or "NBA",
+            "age": int(float(hr["AGE"] or 25)),
+            "gp": gp,
+            "min": round(float(hr["MIN"] or 0), 1),
+            "contested_shots": int(hr["CONTESTED_SHOTS"] or 0),
+            "contested_2pt": int(hr["CONTESTED_SHOTS_2PT"] or 0),
+            "contested_3pt": int(hr["CONTESTED_SHOTS_3PT"] or 0),
+            "deflections": int(hr["DEFLECTIONS"] or 0),
+            "charges_drawn": int(hr["CHARGES_DRAWN"] or 0),
+            "screen_assists": int(hr["SCREEN_ASSISTS"] or 0),
+            "screen_ast_pts": int(hr["SCREEN_AST_PTS"] or 0),
+            "loose_balls": int(hr["LOOSE_BALLS_RECOVERED"] or 0),
+            "box_outs": int(hr["BOX_OUTS"] or 0),
+            "deflections_pg": round(float(hr["DEFLECTIONS"] or 0) / gp, 2),
+            "contested_pg": round(float(hr["CONTESTED_SHOTS"] or 0) / gp, 2),
+            "screen_ast_pg": round(float(hr["SCREEN_ASSISTS"] or 0) / gp, 2),
+        }
+        if pid:
+            hustle_player_lookup[pid] = entry
+            all_hustle_players.append(entry)
+
+    all_hustle_teams = []
+    for htr in cur.execute("SELECT * FROM ep_leaguehustlestatsteam_hustlestatsteam ORDER BY DEFLECTIONS DESC").fetchall():
+        tid = int(htr["TEAM_ID"] or 0)
+        tabbr = team_lookup.get(tid, {}).get("abbreviation", "NBA")
+        all_hustle_teams.append({
+            "team_id": tid,
+            "team_name": htr["TEAM_NAME"] or "Team",
+            "team_abbreviation": tabbr,
+            "contested_shots": int(htr["CONTESTED_SHOTS"] or 0),
+            "contested_2pt": int(htr["CONTESTED_SHOTS_2PT"] or 0),
+            "contested_3pt": int(htr["CONTESTED_SHOTS_3PT"] or 0),
+            "deflections": int(htr["DEFLECTIONS"] or 0),
+            "charges_drawn": int(htr["CHARGES_DRAWN"] or 0),
+            "screen_assists": int(htr["SCREEN_ASSISTS"] or 0),
+            "screen_ast_pts": int(htr["SCREEN_AST_PTS"] or 0),
+            "loose_balls": int(htr["LOOSE_BALLS_RECOVERED"] or 0),
+            "box_outs": int(htr["BOX_OUTS"] or 0),
+        })
+
+    clutch_player_lookup = {}
+    all_clutch_players = []
+    for cr in cur.execute("SELECT * FROM ep_leaguedashplayerclutch_leaguedashplayerclutch ORDER BY PTS DESC").fetchall():
+        pid = int(cr["PLAYER_ID"] or 0)
+        gp = max(1, int(cr["GP"] or 1))
+        pts = int(cr["PTS"] or 0)
+        entry = {
+            "player_id": pid,
+            "player_name": cr["PLAYER_NAME"] or "Player",
+            "team_id": int(cr["TEAM_ID"] or 0),
+            "team_abbreviation": cr["TEAM_ABBREVIATION"] or "NBA",
+            "age": int(float(cr["AGE"] or 25)),
+            "gp": gp,
+            "w": int(cr["W"] or 0),
+            "l": int(cr["L"] or 0),
+            "w_pct": round(float(cr["W_PCT"] or 0), 3),
+            "min": round(float(cr["MIN"] or 0), 1),
+            "pts": pts,
+            "pts_pg": round(pts / gp, 2),
+            "reb": int(cr["REB"] or 0),
+            "ast": int(cr["AST"] or 0),
+            "stl": int(cr["STL"] or 0),
+            "blk": int(cr["BLK"] or 0),
+            "tov": int(cr["TOV"] or 0),
+            "fgm": int(cr["FGM"] or 0),
+            "fga": int(cr["FGA"] or 0),
+            "fg_pct": round(float(cr["FG_PCT"] or 0), 3),
+            "fg3m": int(cr["FG3M"] or 0),
+            "fg3a": int(cr["FG3A"] or 0),
+            "fg3_pct": round(float(cr["FG3_PCT"] or 0), 3),
+            "ftm": int(cr["FTM"] or 0),
+            "fta": int(cr["FTA"] or 0),
+            "ft_pct": round(float(cr["FT_PCT"] or 0), 3),
+            "plus_minus": int(cr["PLUS_MINUS"] or 0),
+        }
+        if pid:
+            clutch_player_lookup[pid] = entry
+            all_clutch_players.append(entry)
+
+    all_clutch_teams = []
+    for ctr in cur.execute("SELECT * FROM ep_leaguedashteamclutch_leaguedashteamclutch ORDER BY W_PCT DESC").fetchall():
+        tid = int(ctr["TEAM_ID"] or 0)
+        tabbr = team_lookup.get(tid, {}).get("abbreviation", "NBA")
+        all_clutch_teams.append({
+            "team_id": tid,
+            "team_name": ctr["TEAM_NAME"] or "Team",
+            "team_abbreviation": tabbr,
+            "gp": int(ctr["GP"] or 0),
+            "w": int(ctr["W"] or 0),
+            "l": int(ctr["L"] or 0),
+            "w_pct": round(float(ctr["W_PCT"] or 0), 3),
+            "min": round(float(ctr["MIN"] or 0), 1),
+            "pts": int(ctr["PTS"] or 0),
+            "fg_pct": round(float(ctr["FG_PCT"] or 0), 3),
+            "fg3_pct": round(float(ctr["FG3_PCT"] or 0), 3),
+            "ft_pct": round(float(ctr["FT_PCT"] or 0), 3),
+            "plus_minus": int(ctr["PLUS_MINUS"] or 0),
+        })
+
+    defend_player_lookup = {}
+    all_defend_players = []
+    for dr in cur.execute("SELECT * FROM ep_leaguedashptdefend_leaguedashptdefend ORDER BY D_FGA DESC").fetchall():
+        pid = int(dr["CLOSE_DEF_PERSON_ID"] or 0)
+        gp = max(1, int(dr["GP"] or 1))
+        entry = {
+            "player_id": pid,
+            "player_name": dr["PLAYER_NAME"] or "Player",
+            "team_abbreviation": dr["PLAYER_LAST_TEAM_ABBREVIATION"] or "NBA",
+            "position": dr["PLAYER_POSITION"] or "F",
+            "age": int(float(dr["AGE"] or 25)),
+            "gp": gp,
+            "d_fgm": int(dr["D_FGM"] or 0),
+            "d_fga": int(dr["D_FGA"] or 0),
+            "d_fga_pg": round(float(dr["D_FGA"] or 0) / gp, 1),
+            "d_fg_pct": round(float(dr["D_FG_PCT"] or 0), 3),
+            "normal_fg_pct": round(float(dr["NORMAL_FG_PCT"] or 0), 3),
+            "pct_plusminus": round(float(dr["PCT_PLUSMINUS"] or 0), 3),
+        }
+        if pid:
+            defend_player_lookup[pid] = entry
+            all_defend_players.append(entry)
+
+    # =========================================================================
     # 1. TEAMS DATASET ACROSS ALL 10 SEASONS (2015-16 TO 2024-25)
     # =========================================================================
     print("[*] Exporting all 30 teams across 10 seasons (2015-16 to 2024-25)...")
@@ -160,16 +310,13 @@ def export_all():
         if season_key in teams_by_season:
             teams_by_season[season_key].append(t_data)
 
-    # Default season for primary overview is 2024-25 (or 2023-24)
     default_teams_23_24 = teams_by_season.get("2023-24", [])
-    default_teams_24_25 = teams_by_season.get("2024-25", [])
 
     # =========================================================================
     # 2. ALL PLAYERS & RAPM / LEBRON / ARCHETYPES ACROSS 10 SEASONS (2015-16 TO 2024-25)
     # =========================================================================
-    print("[*] Exporting all player-seasons (2015-16 to 2024-25) with RAPM, LEBRON & 3D Clusters...")
+    print("[*] Exporting all player-seasons (2015-16 to 2024-25) with RAPM, LEBRON, Biometrics & 3D Clusters...")
 
-    # Pre-fetch 3D position clusters lookup by (player_id, season)
     clusters_lookup = {}
     for cr in cur.execute(
         "SELECT player_id, season, cluster_id, cluster_name, tsne_x, tsne_y, tsne_z FROM player_position_clusters"
@@ -182,7 +329,6 @@ def export_all():
             "tsne_z": round(float(cr["tsne_z"] or 0.0), 2),
         }
 
-    # Pre-fetch box_lebron_ratings lookup by (player_id, season)
     lebron_lookup = {}
     for lr in cur.execute(
         f"""
@@ -195,7 +341,6 @@ def export_all():
     ).fetchall():
         lebron_lookup[(lr["player_id"], lr["season"])] = dict(lr)
 
-    # Solve Ridge RAPM on 2023-24 OLAP stints as anchor
     rapm_res = None
     try:
         from nba_stats_db.possession.olap import DuckDBPossessionEngine
@@ -261,6 +406,7 @@ def export_all():
     players_by_season = {s: [] for s in SEASONS_10YR}
     rapm_by_season = {s: [] for s in SEASONS_10YR}
     seen_player_season = set()
+    player_career_summary = {}
 
     for r in p_rows:
         season = r["season"]
@@ -278,8 +424,11 @@ def export_all():
 
         leb = lebron_lookup.get((pid, season), {})
         clus = clusters_lookup.get((pid, season)) or clusters_lookup.get((pid, "2024-25")) or clusters_lookup.get((pid, "2023-24")) or {}
+        bio = bio_lookup.get(pid, {})
+        hus = hustle_player_lookup.get(pid, {})
+        dfd = defend_player_lookup.get(pid, {})
+        clu = clutch_player_lookup.get(pid, {})
 
-        # Use real box_lebron_ratings where present, blended with RAPM priors
         o_leb = leb.get("o_lebron")
         d_leb = leb.get("d_lebron")
         box_leb = leb.get("box_lebron")
@@ -300,6 +449,7 @@ def export_all():
 
         tot_rapm = round(orapm + drapm, 2)
         poss = int(leb.get("possessions") or r["poss"] or int(gp * min_pg * 2.08))
+        calc_wa = round(float(wins_added if wins_added is not None else max(-1.5, tot_rapm * (poss / 2200.0))), 2)
 
         off_arch = leb.get("offensive_archetype") or (
             "Primary Ballhandler" if ast >= 5.5 else
@@ -348,17 +498,38 @@ def export_all():
             "o_lebron": round(float(o_leb if o_leb is not None else orapm), 2),
             "d_lebron": round(float(d_leb if d_leb is not None else drapm), 2),
             "box_lebron": round(float(box_leb if box_leb is not None else tot_rapm), 2),
-            "wins_added": round(float(wins_added if wins_added is not None else max(-1.5, tot_rapm * (poss / 2200.0))), 2),
+            "wins_added": calc_wa,
             "offensive_archetype": off_arch,
             "defensive_archetype": def_arch,
             "cluster_name": clus.get("cluster_name", off_arch),
             "tsne_x": clus.get("tsne_x", round(orapm * 3.2, 2)),
             "tsne_y": clus.get("tsne_y", round(drapm * 3.2, 2)),
             "tsne_z": clus.get("tsne_z", round((pts - 10.0) * 1.1, 2)),
+            "height": bio.get("height", ""),
+            "weight": bio.get("weight", ""),
+            "college": bio.get("college", ""),
+            "country": bio.get("country", ""),
+            "draft_year": bio.get("draft_year", ""),
+            "draft_number": bio.get("draft_number", ""),
+            "deflections_pg": hus.get("deflections_pg", round(float(leb.get("deflections_per_100") or 1.4), 1)),
+            "contested_pg": hus.get("contested_pg", 4.2),
+            "dfg_diff": dfd.get("pct_plusminus", round(float(leb.get("rim_defense_diff") or 0.0) / 100.0, 3)),
+            "clutch_pts": clu.get("pts", 0),
+            "clutch_plus_minus": clu.get("plus_minus", 0),
         }
         players_by_season[season].append(p_entry)
 
-    # Compute within-season percentiles for each of the 10 seasons
+        # Accumulate career summary for draft value evaluation
+        cs = player_career_summary.setdefault(pid, {"seasons": 0, "gp": 0, "pts_sum": 0.0, "wins_added": 0.0, "peak_rapm": -99.0, "peak_ppg": 0.0})
+        cs["seasons"] += 1
+        cs["gp"] += gp
+        cs["pts_sum"] += pts * gp
+        cs["wins_added"] = round(cs["wins_added"] + calc_wa, 2)
+        if tot_rapm > cs["peak_rapm"]:
+            cs["peak_rapm"] = tot_rapm
+        if pts > cs["peak_ppg"]:
+            cs["peak_ppg"] = pts
+
     all_10yr_players = []
     for season in SEASONS_10YR:
         plist = players_by_season[season]
@@ -419,7 +590,23 @@ def export_all():
     tax_calc = TaxCalculator()
     settings = tax_calc.DEFAULT_CAP_SETTINGS.get("2023-24", tax_calc.DEFAULT_CAP_SETTINGS["2023-24"])
 
-    # Multi-year contract schedules per contract_id
+    # Player RAPM & Wins Added lookup for Trade Machine On-Court Impact
+    latest_player_impact = {}
+    for s_key in ["2023-24", "2024-25", "2022-23"]:
+        for p in players_by_season.get(s_key, []):
+            pid = p["player_id"]
+            if pid not in latest_player_impact:
+                latest_player_impact[pid] = {
+                    "rapm": p["rapm"],
+                    "orapm": p["orapm"],
+                    "drapm": p["drapm"],
+                    "wins_added": p["wins_added"],
+                    "pts": p["pts"],
+                    "reb": p["reb"],
+                    "ast": p["ast"],
+                    "archetype": p["offensive_archetype"],
+                }
+
     contract_years_map = {}
     for yr in cur.execute(
         "SELECT contract_id, season, base_salary, cap_hit, guaranteed_amount, option_type, is_guaranteed FROM contract_years ORDER BY season ASC"
@@ -436,12 +623,10 @@ def export_all():
             "is_guaranteed": bool(yr["is_guaranteed"]),
         })
 
-    # Real cap sheets lookup by (team_id, season)
     cap_sheet_lookup = {}
     for cs in cur.execute("SELECT * FROM team_cap_sheets").fetchall():
         cap_sheet_lookup[(cs["team_id"], cs["season"])] = dict(cs)
 
-    # Dead money & trade exceptions
     dead_money_map = {}
     for dm in cur.execute("SELECT team_id, player_name, season, amount, is_stretched, notes FROM dead_money").fetchall():
         tid = dm["team_id"]
@@ -484,6 +669,11 @@ def export_all():
         c_dict["current_salary"] = c_dict["current_salary"] or c_dict["next_season_cap_hit"] or 2_000_000
         c_dict["cap_hit"] = c_dict["cap_hit"] or c_dict["next_season_cap_hit"] or c_dict["current_salary"]
         c_dict["schedule"] = contract_years_map.get(cr["contract_id"], [])
+        imp = latest_player_impact.get(cr["player_id"], {})
+        c_dict["rapm"] = imp.get("rapm", 0.0)
+        c_dict["wins_added"] = imp.get("wins_added", 0.5)
+        c_dict["pts"] = imp.get("pts", 8.0)
+        c_dict["archetype"] = imp.get("archetype", "Rotation Wing")
         team_contracts.setdefault(tid, []).append(c_dict)
 
     cba_teams = []
@@ -522,17 +712,16 @@ def export_all():
             "roster_count": len(contracts),
             "dead_money": dead_money_map.get(tid, []),
             "trade_exceptions": tpe_map.get(tid, []),
-            "contracts": contracts,  # ALL contracts on team (no artificial truncation)
+            "contracts": contracts,
         })
 
     # =========================================================================
-    # 4. WOWY BITMASK ROSTERS & ALL 641 EVALUATED 5-MAN LINEUPS
+    # 4. WOWY BITMASK ROSTERS, 641 EVALUATED LINEUPS & 500 REAL NBA LINEUPS
     # =========================================================================
-    print("[*] Exporting WOWY bitmask rosters & all 641 evaluated 5-man lineups...")
+    print("[*] Exporting WOWY bitmask rosters, 641 evaluated 5-man lineups & 500 real tracked NBA lineups...")
     indexer = TeamSeasonBitmaskIndexer()
     wowy_data = {}
 
-    # Load all 641 evaluated 5-man lineups from team_lineup_evaluations
     lineup_evals_by_team = {}
     all_lineup_evals = []
     for lr in cur.execute(
@@ -555,10 +744,40 @@ def export_all():
         lineup_evals_by_team.setdefault(abbr, []).append(l_dict)
         all_lineup_evals.append(l_dict)
 
+    # Load real NBA tracked 5-man lineups from ep_leaguelineupviz_leaguelineupviz + ep_leaguedashlineups_lineups
+    dash_lineups_lookup = {}
+    for dlr in cur.execute("SELECT GROUP_ID, GP, W, L, W_PCT, PLUS_MINUS, PTS FROM ep_leaguedashlineups_lineups").fetchall():
+        dash_lineups_lookup[dlr["GROUP_ID"]] = dict(dlr)
+
+    real_nba_lineups = []
+    for vlr in cur.execute("SELECT * FROM ep_leaguelineupviz_leaguelineupviz WHERE MIN >= 35 ORDER BY MIN DESC LIMIT 500").fetchall():
+        gid = vlr["GROUP_ID"]
+        dl = dash_lineups_lookup.get(gid, {})
+        pids = [int(x) for x in str(gid or "").split("-") if x.strip().isdigit()]
+        real_nba_lineups.append({
+            "group_id": gid,
+            "group_name": vlr["GROUP_NAME"] or "",
+            "team_id": int(vlr["TEAM_ID"] or 0),
+            "team_abbreviation": vlr["TEAM_ABBREVIATION"] or "NBA",
+            "gp": int(dl.get("GP") or 0),
+            "w": int(dl.get("W") or 0),
+            "l": int(dl.get("L") or 0),
+            "w_pct": round(float(dl.get("W_PCT") or 0.5), 3),
+            "min": round(float(vlr["MIN"] or 0), 1),
+            "off_rating": round(float(vlr["OFF_RATING"] or 114.0), 1),
+            "def_rating": round(float(vlr["DEF_RATING"] or 114.0), 1),
+            "net_rating": round(float(vlr["NET_RATING"] or 0.0), 1),
+            "pace": round(float(vlr["PACE"] or 99.0), 1),
+            "ts_pct": round(float(vlr["TS_PCT"] or 0.57), 3),
+            "pct_pts_paint": round(float(vlr["PCT_PTS_PAINT"] or 0.42), 3),
+            "pct_pts_fb": round(float(vlr["PCT_PTS_FB"] or 0.12), 3),
+            "opp_efg_pct": round(float(vlr["OPP_EFG_PCT"] or 0.53), 3),
+            "player_id_list": pids,
+        })
+
     for t in default_teams_23_24:
         tid = t["team_id"]
         abbr = t["abbreviation"]
-        # Get full team roster from player_season_stats (2024-25 + 2023-24)
         roster_sql = """
         SELECT p.player_id, p.full_name, ROUND(MAX(s.min), 1) as avg_min, MAX(s.gp) as gp,
                ROUND(MAX(s.pts), 1) as pts, ROUND(MAX(s.ast), 1) as ast, ROUND(MAX(s.reb), 1) as reb
@@ -600,9 +819,6 @@ def export_all():
     # 5. SPATIAL SHOT LOCATIONS FOR ALL 572 NBA PLAYERS & ALL 30 TEAMS
     # =========================================================================
     print("[*] Exporting real court zone shot locations for all 572 players and 30 teams...")
-    shot_model = XGBExpectedShotModel()
-
-    # Query all 572 players from ep_leaguedashplayershotlocations_shotlocations
     player_shot_rows = cur.execute(
         "SELECT * FROM ep_leaguedashplayershotlocations_shotlocations ORDER BY (__Restricted_Area____FGA__ + __Above_the_Break_3____FGA__ + __Mid_Range____FGA__) DESC"
     ).fetchall()
@@ -694,7 +910,6 @@ def export_all():
             },
         }
 
-    # Query all 30 teams from ep_leaguedashteamshotlocations_shotlocations
     team_shot_rows = cur.execute("SELECT * FROM ep_leaguedashteamshotlocations_shotlocations").fetchall()
     all_team_zone_profiles = {}
     for tr in team_shot_rows:
@@ -805,6 +1020,116 @@ def export_all():
 
     print(f"[+] Exported {len(games_10yr)} historical games across 2015-16 through 2024-25.")
 
+    # =========================================================================
+    # 7. TOP 200 HISTORIC SINGLE-GAME MASTERPIECES & DRAFT / COMBINE LAB
+    # =========================================================================
+    print("[*] Exporting Top 200 single-game performances from 1.45M player_game_logs...")
+    masterpieces_sql = """
+    SELECT l.game_id, l.player_id, p.full_name, l.game_date, l.matchup, l.wl, l.min,
+           l.pts, l.reb, l.ast, l.stl, l.blk, l.tov, l.fgm, l.fga, l.fg3m, l.fg3a, l.ftm, l.fta, l.plus_minus,
+           ROUND(l.pts + 0.4*l.fgm - 0.7*l.fga - 0.4*(l.fta - l.ftm) + 0.7*l.oreb + 0.3*l.dreb + l.stl + 0.7*l.ast + 0.7*l.blk - 0.4*l.pf - l.tov, 1) as gm_score
+    FROM player_game_logs l
+    JOIN players p ON p.player_id = l.player_id
+    WHERE l.game_date >= '2015-10-01' AND (l.pts >= 45 OR (l.pts >= 32 AND l.ast >= 12 AND l.reb >= 12))
+    ORDER BY gm_score DESC, l.pts DESC
+    LIMIT 200
+    """
+    historic_performances = []
+    seen_perf = set()
+    for mr in cur.execute(masterpieces_sql).fetchall():
+        key = (mr["game_id"], mr["player_id"])
+        if key in seen_perf:
+            continue
+        seen_perf.add(key)
+        historic_performances.append({
+            "game_id": mr["game_id"],
+            "player_id": int(mr["player_id"]),
+            "player_name": mr["full_name"],
+            "date": mr["game_date"],
+            "matchup": mr["matchup"] or "",
+            "wl": mr["wl"] or "W",
+            "min": int(float(mr["min"] or 0)),
+            "pts": int(float(mr["pts"] or 0)),
+            "reb": int(float(mr["reb"] or 0)),
+            "ast": int(float(mr["ast"] or 0)),
+            "stl": int(float(mr["stl"] or 0)),
+            "blk": int(float(mr["blk"] or 0)),
+            "fg": f"{int(float(mr['fgm'] or 0))}-{int(float(mr['fga'] or 0))}",
+            "fg3": f"{int(float(mr['fg3m'] or 0))}-{int(float(mr['fg3a'] or 0))}",
+            "ft": f"{int(float(mr['ftm'] or 0))}-{int(float(mr['fta'] or 0))}",
+            "plus_minus": int(float(mr["plus_minus"] or 0)),
+            "gm_score": float(mr["gm_score"] or 0.0),
+        })
+
+    print("[*] Exporting NBA Draft Value Over Pick Expectation (2014-2025) & Combine Anthropometrics...")
+    draft_picks = []
+    for dhr in cur.execute("""
+        SELECT PERSON_ID, PLAYER_NAME, SEASON, ROUND_NUMBER, ROUND_PICK, OVERALL_PICK, TEAM_ABBREVIATION, ORGANIZATION, ORGANIZATION_TYPE
+        FROM ep_drafthistory_drafthistory
+        WHERE CAST(SEASON AS INT) BETWEEN 2014 AND 2025 AND OVERALL_PICK > 0
+        ORDER BY CAST(SEASON AS INT) DESC, OVERALL_PICK ASC
+    """).fetchall():
+        pid = int(dhr["PERSON_ID"] or 0)
+        pick = int(dhr["OVERALL_PICK"] or 60)
+        cs = player_career_summary.get(pid, {})
+        gp = cs.get("gp", 0)
+        career_ppg = round(cs["pts_sum"] / gp, 1) if gp > 0 else 0.0
+        wins_added = cs.get("wins_added", 0.0)
+        peak_rapm = cs.get("peak_rapm", 0.0) if gp > 0 else 0.0
+        # Expected Wins Added by draft slot decay curve: exp_wa = 28 * exp(-0.055 * (pick - 1))
+        exp_wa = round(26.0 * math.exp(-0.052 * max(0, pick - 1)), 1)
+        vope = round(wins_added - exp_wa, 1) if gp > 0 else 0.0
+
+        draft_picks.append({
+            "player_id": pid,
+            "player_name": dhr["PLAYER_NAME"] or "Prospect",
+            "draft_year": str(dhr["SEASON"] or ""),
+            "round": int(dhr["ROUND_NUMBER"] or 1),
+            "overall_pick": pick,
+            "team": dhr["TEAM_ABBREVIATION"] or "NBA",
+            "organization": dhr["ORGANIZATION"] or "",
+            "gp": gp,
+            "career_ppg": career_ppg,
+            "peak_ppg": round(cs.get("peak_ppg", 0.0), 1),
+            "peak_rapm": round(peak_rapm, 2),
+            "wins_added": wins_added,
+            "expected_wins_added": exp_wa,
+            "vope": vope,
+        })
+
+    combine_athletes = []
+    for cbr in cur.execute("SELECT * FROM ep_draftcombinestats_draftcombinestats ORDER BY WINGSPAN DESC").fetchall():
+        h_in = float(cbr["HEIGHT_WO_SHOES"] or 0)
+        w_in = float(cbr["WINGSPAN"] or 0)
+        combine_athletes.append({
+            "season": str(cbr["SEASON"] or "2024"),
+            "player_id": int(cbr["PLAYER_ID"] or 0),
+            "player_name": cbr["PLAYER_NAME"] or "",
+            "position": cbr["POSITION"] or "",
+            "height_ft_in": cbr["HEIGHT_WO_SHOES_FT_IN"] or "",
+            "height_inches": round(h_in, 2),
+            "weight": str(cbr["WEIGHT"] or ""),
+            "wingspan_ft_in": cbr["WINGSPAN_FT_IN"] or "",
+            "wingspan_inches": round(w_in, 2),
+            "wingspan_diff": round(w_in - h_in, 2) if (w_in > 0 and h_in > 0) else 0.0,
+            "standing_reach": cbr["STANDING_REACH_FT_IN"] or "",
+            "max_vertical": float(cbr["MAX_VERTICAL_LEAP"] or 0.0),
+            "standing_vertical": float(cbr["STANDING_VERTICAL_LEAP"] or 0.0),
+            "lane_agility": float(cbr["LANE_AGILITY_TIME"] or 0.0),
+            "sprint_3q": float(cbr["THREE_QUARTER_SPRINT"] or 0.0),
+        })
+
+    scouting_payload = {
+        "clutch_players": all_clutch_players,
+        "clutch_teams": all_clutch_teams,
+        "hustle_players": all_hustle_players,
+        "hustle_teams": all_hustle_teams,
+        "defense_tracking": all_defend_players,
+        "draft_picks": draft_picks,
+        "combine_athletes": combine_athletes,
+        "historic_performances": historic_performances,
+    }
+
     # Marquee win probability timeline
     win_model = XGBWinProbabilityModel()
     game_timeline = []
@@ -832,6 +1157,7 @@ def export_all():
         "seasons": SEASONS_10YR,
         "total_historical_games": len(games_10yr),
         "recent_games_sample": games_10yr[:250],
+        "historic_performances": historic_performances[:120],
         "marquee_games": [
             {
                 "game_id": "0022300061",
@@ -848,12 +1174,6 @@ def export_all():
     # =========================================================================
     # WRITE DATASETS TO PUBLIC/DATA AND LIB/STATIC-DATA
     # =========================================================================
-    # Keep lib/static-data focused for fast TS compilation while including all 10 seasons of teams,
-    # all 572 shot profiles, all 641 lineups, all 450 contracts, and 2024-25 + 2023-24 players,
-    # plus full 10-season archives in public/data/ for instant fetch.
-    recent_2_seasons_players = players_by_season.get("2023-24", []) + players_by_season.get("2024-25", [])
-    recent_2_seasons_rapm = rapm_by_season.get("2023-24", []) + rapm_by_season.get("2024-25", [])
-
     shared_files = {
         "teams.json": {
             "season": "2023-24",
@@ -870,8 +1190,10 @@ def export_all():
         "wowy_lineups.json": {
             "season": "2023-24",
             "total_evaluated_lineups": len(all_lineup_evals),
+            "total_real_nba_lineups": len(real_nba_lineups),
             "teams": wowy_data,
             "top_lineups": all_lineup_evals[:150],
+            "real_nba_lineups": real_nba_lineups,
         },
         "shot_profiles.json": {
             "season": "2023-24",
@@ -881,6 +1203,7 @@ def export_all():
             "team_profiles": all_team_zone_profiles,
         },
         "game_matchups.json": matchup_data,
+        "scouting_clutch_hustle.json": scouting_payload,
     }
 
     for name, data in shared_files.items():
@@ -893,9 +1216,6 @@ def export_all():
         with open(p2, "w", encoding="utf-8") as f:
             json.dump(data, f, separators=(",", ":"))
 
-    # Write players.json & rapm_leaderboard.json:
-    # In public/data/, store ALL 10 seasons (7,128 player-seasons)!
-    # In lib/static-data/, store 2023-24 + 2024-25 (and also write players_10yr.json & games_10yr.json to public/data)
     full_players_payload = {
         "season": "2023-24",
         "seasons": SEASONS_10YR,
@@ -911,29 +1231,31 @@ def export_all():
         "by_season": rapm_by_season,
     }
 
+    def safe_write_json(path_obj, data_obj):
+        raw_bytes = json.dumps(data_obj, separators=(",", ":")).encode("utf-8")
+        with open(path_obj, "wb") as bf:
+            chunk_sz = 1024 * 1024
+            for i in range(0, len(raw_bytes), chunk_sz):
+                bf.write(raw_bytes[i : i + chunk_sz])
+        print(f"[+] Written {path_obj} ({os.path.getsize(path_obj) / 1024:.1f} KB)")
+
     for fname, payload in [
         ("players.json", full_players_payload),
         ("players_10yr.json", full_players_payload),
         ("rapm_leaderboard.json", full_rapm_payload),
         ("games_10yr.json", {"seasons": SEASONS_10YR, "total": len(games_10yr), "games": games_10yr}),
     ]:
-        p_out = OUT_DIR / fname
-        with open(p_out, "w", encoding="utf-8") as f:
-            json.dump(payload, f, separators=(",", ":"))
-        print(f"[+] Written {p_out} ({os.path.getsize(p_out) / 1024:.1f} KB)")
+        safe_write_json(OUT_DIR / fname, payload)
 
-    # Also write all 10 seasons to lib/static-data/players.json and rapm_leaderboard.json if compact size is small (~2.5 MB)
     for fname, payload in [
         ("players.json", full_players_payload),
         ("rapm_leaderboard.json", full_rapm_payload),
+        ("games_10yr.json", {"seasons": SEASONS_10YR, "total": len(games_10yr), "games": games_10yr}),
     ]:
-        p_lib = LIB_DATA_DIR / fname
-        with open(p_lib, "w", encoding="utf-8") as f:
-            json.dump(payload, f, separators=(",", ":"))
-        print(f"[+] Written {p_lib} ({os.path.getsize(p_lib) / 1024:.1f} KB)")
+        safe_write_json(LIB_DATA_DIR / fname, payload)
 
     conn.close()
-    print("[SUCCESS] All 10-season static datasets exported successfully!")
+    print("[SUCCESS] All 10-season + Scouting/Clutch/Hustle/Draft static datasets exported successfully!")
 
 
 if __name__ == "__main__":

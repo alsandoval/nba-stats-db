@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { DataService, Team, EvaluatedLineup } from "@/lib/data-service";
+import { DataService, Team, EvaluatedLineup, RealNBALineup } from "@/lib/data-service";
 import staticWOWY from "@/lib/static-data/wowy_lineups.json";
 
 interface PlayerRosterItem {
@@ -35,7 +35,8 @@ export function WOWYBuilder() {
   const [stats, setStats] = useState<WOWYStats | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Evaluated 5-man lineups state
+  // 5-man lineups state
+  const [explorerMode, setExplorerMode] = useState<"real_nba" | "synergy">("real_nba");
   const [lineupTeamFilter, setLineupTeamFilter] = useState<string>("ALL");
   const [lineupSearch, setLineupSearch] = useState<string>("");
 
@@ -109,6 +110,11 @@ export function WOWYBuilder() {
     [lineupTeamFilter]
   );
 
+  const allRealNBALineups = useMemo(
+    () => DataService.getRealNBALineups(lineupTeamFilter),
+    [lineupTeamFilter]
+  );
+
   const filteredLineups = useMemo(() => {
     if (!lineupSearch) return allEvaluatedLineups;
     const q = lineupSearch.toLowerCase();
@@ -119,6 +125,16 @@ export function WOWYBuilder() {
         l.balance_grade.toLowerCase().includes(q)
     );
   }, [allEvaluatedLineups, lineupSearch]);
+
+  const filteredRealLineups = useMemo(() => {
+    if (!lineupSearch) return allRealNBALineups;
+    const q = lineupSearch.toLowerCase();
+    return allRealNBALineups.filter(
+      (l) =>
+        l.group_name.toLowerCase().includes(q) ||
+        l.team_abbreviation.toLowerCase().includes(q)
+    );
+  }, [allRealNBALineups, lineupSearch]);
 
   const loadEvaluatedLineup = (lineup: EvaluatedLineup) => {
     const targetTeam = teams.find((t) => t.abbreviation === lineup.team_abbreviation);
@@ -366,15 +382,36 @@ export function WOWYBuilder() {
         </div>
       </div>
 
-      {/* PART 2: ALL 641 EVALUATED 5-MAN LINEUPS SYNERGY & ARCHETYPE EXPLORER */}
+      {/* PART 2: 5-MAN LINEUP DATABASE (REAL NBA TRACKED + SYNERGY ARCHETYPES) */}
       <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-borderDark pb-4">
-          <div>
-            <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-              <span>🧬</span> Evaluated 5-Man Lineup Synergy &amp; Archetype Database (All 641 NBA Units)
-            </h3>
-            <p className="text-xs text-gray-400 font-mono mt-0.5">
-              Pre-computed 5-man lineup evaluations combining LEBRON impact, offensive/defensive synergy, usage penalties, and court spacing grades.
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-borderDark pb-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setExplorerMode("real_nba")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-extrabold transition ${
+                  explorerMode === "real_nba"
+                    ? "bg-accent text-white shadow-glow"
+                    : "bg-surface text-gray-400 hover:text-white border border-borderDark"
+                }`}
+              >
+                🏟️ Real NBA Tracked 5-Man Lineups ({allRealNBALineups.length})
+              </button>
+              <button
+                onClick={() => setExplorerMode("synergy")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-extrabold transition ${
+                  explorerMode === "synergy"
+                    ? "bg-accent text-white shadow-glow"
+                    : "bg-surface text-gray-400 hover:text-white border border-borderDark"
+                }`}
+              >
+                🧬 Synergy &amp; Archetype Model ({allEvaluatedLineups.length})
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 font-mono">
+              {explorerMode === "real_nba"
+                ? "Official NBA on-court 5-man lineups (ep_leaguelineupviz) sorted by court minutes with actual ORtg, DRtg, Net Rtg, Pace & Paint Pts%."
+                : "Pre-computed 5-man lineup evaluations combining LEBRON impact, offensive/defensive synergy, usage penalties, and court spacing grades."}
             </p>
           </div>
 
@@ -391,7 +428,7 @@ export function WOWYBuilder() {
               onChange={(e) => setLineupTeamFilter(e.target.value)}
               className="bg-surface border border-borderDark rounded-xl px-3.5 py-1.5 text-xs font-mono font-bold text-white focus:outline-none focus:border-accent"
             >
-              <option value="ALL">All 30 Teams (641 Units)</option>
+              <option value="ALL">All 30 Teams</option>
               {teams.map((t) => (
                 <option key={t.abbreviation} value={t.abbreviation}>
                   {t.abbreviation} - {t.full_name}
@@ -401,91 +438,150 @@ export function WOWYBuilder() {
           </div>
         </div>
 
-        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0 z-10">
-              <tr>
-                <th className="py-3 px-3">Team</th>
-                <th className="py-3 px-3">5-Man Lineup &amp; Archetype Mix</th>
-                <th className="py-3 px-3 text-center">Grade</th>
-                <th className="py-3 px-3 text-right">Pred Net Rtg</th>
-                <th className="py-3 px-3 text-right">Off Syn</th>
-                <th className="py-3 px-3 text-right">Def Syn</th>
-                <th className="py-3 px-3 text-right">Spacing</th>
-                <th className="py-3 px-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-borderDark/40">
-              {filteredLineups.slice(0, 120).map((lu) => (
-                <tr key={lu.lineup_id} className="hover:bg-surface/60 transition">
-                  <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold">
-                      {lu.team_abbreviation}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 font-sans">
-                    <div className="font-bold text-white text-xs">{lu.player_names}</div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {Object.entries(lu.archetype_mix || {}).map(([arch, cnt]) => (
-                        <span
-                          key={arch}
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-borderDark text-gray-400"
-                        >
-                          {cnt}x {arch}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 text-center">
-                    <span
-                      className={`px-2 py-0.5 rounded font-extrabold ${
-                        lu.balance_grade.startsWith("A")
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                          : lu.balance_grade.startsWith("B")
-                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                          : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                      }`}
-                    >
-                      {lu.balance_grade}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right font-extrabold">
-                    <span
-                      className={
-                        lu.predicted_net_rating >= 0 ? "text-emerald-400" : "text-red-400"
-                      }
-                    >
-                      {lu.predicted_net_rating >= 0
-                        ? `+${lu.predicted_net_rating.toFixed(2)}`
-                        : lu.predicted_net_rating.toFixed(2)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right text-gray-300">
-                    {lu.offensive_synergy >= 0
-                      ? `+${lu.offensive_synergy.toFixed(2)}`
-                      : lu.offensive_synergy.toFixed(2)}
-                  </td>
-                  <td className="py-3 px-3 text-right text-gray-300">
-                    {lu.defensive_synergy >= 0
-                      ? `+${lu.defensive_synergy.toFixed(2)}`
-                      : lu.defensive_synergy.toFixed(2)}
-                  </td>
-                  <td className="py-3 px-3 text-right text-cyan-300 font-bold">
-                    {lu.spacing_rating.toFixed(1)} / 10
-                  </td>
-                  <td className="py-3 px-3 text-center">
-                    <button
-                      onClick={() => loadEvaluatedLineup(lu)}
-                      className="px-2.5 py-1 rounded bg-accent/20 hover:bg-accent text-accent hover:text-white border border-accent/40 font-bold transition"
-                    >
-                      Load 5 ON
-                    </button>
-                  </td>
+        {explorerMode === "real_nba" ? (
+          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0 z-10">
+                <tr>
+                  <th className="py-3 px-3">#</th>
+                  <th className="py-3 px-3">Team</th>
+                  <th className="py-3 px-3">Official NBA 5-Man Lineup</th>
+                  <th className="py-3 px-3 text-right">MIN</th>
+                  <th className="py-3 px-3 text-right">ORtg</th>
+                  <th className="py-3 px-3 text-right">DRtg</th>
+                  <th className="py-3 px-3 text-right">Net Rtg</th>
+                  <th className="py-3 px-3 text-right">TS%</th>
+                  <th className="py-3 px-3 text-right">Pace</th>
+                  <th className="py-3 px-3 text-right">Paint Pts%</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-borderDark/40">
+                {filteredRealLineups.slice(0, 150).map((lu, i) => (
+                  <tr key={`${lu.group_id}-${i}`} className="hover:bg-surface/60 transition">
+                    <td className="py-3 px-3 text-gray-500 font-bold">{i + 1}</td>
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold">
+                        {lu.team_abbreviation}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 font-sans font-bold text-white text-xs">
+                      {lu.group_name}
+                    </td>
+                    <td className="py-3 px-3 text-right text-amber-300 font-bold">
+                      {lu.min.toFixed(0)}
+                    </td>
+                    <td className="py-3 px-3 text-right text-emerald-300 font-bold">
+                      {lu.off_rating.toFixed(1)}
+                    </td>
+                    <td className="py-3 px-3 text-right text-cyan-300 font-bold">
+                      {lu.def_rating.toFixed(1)}
+                    </td>
+                    <td className="py-3 px-3 text-right font-extrabold">
+                      <span className={lu.net_rating >= 0 ? "text-emerald-400" : "text-red-400"}>
+                        {lu.net_rating >= 0 ? `+${lu.net_rating.toFixed(1)}` : lu.net_rating.toFixed(1)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right text-gray-300">
+                      {(lu.ts_pct * 100).toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-3 text-right text-gray-300">
+                      {lu.pace.toFixed(1)}
+                    </td>
+                    <td className="py-3 px-3 text-right text-purple-300">
+                      {(lu.pct_pts_paint * 100).toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0 z-10">
+                <tr>
+                  <th className="py-3 px-3">Team</th>
+                  <th className="py-3 px-3">5-Man Lineup &amp; Archetype Mix</th>
+                  <th className="py-3 px-3 text-center">Grade</th>
+                  <th className="py-3 px-3 text-right">Pred Net Rtg</th>
+                  <th className="py-3 px-3 text-right">Off Syn</th>
+                  <th className="py-3 px-3 text-right">Def Syn</th>
+                  <th className="py-3 px-3 text-right">Spacing</th>
+                  <th className="py-3 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-borderDark/40">
+                {filteredLineups.slice(0, 120).map((lu) => (
+                  <tr key={lu.lineup_id} className="hover:bg-surface/60 transition">
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold">
+                        {lu.team_abbreviation}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 font-sans">
+                      <div className="font-bold text-white text-xs">{lu.player_names}</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {Object.entries(lu.archetype_mix || {}).map(([arch, cnt]) => (
+                          <span
+                            key={arch}
+                            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-borderDark text-gray-400"
+                          >
+                            {cnt}x {arch}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span
+                        className={`px-2 py-0.5 rounded font-extrabold ${
+                          lu.balance_grade.startsWith("A")
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                            : lu.balance_grade.startsWith("B")
+                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                            : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                        }`}
+                      >
+                        {lu.balance_grade}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right font-extrabold">
+                      <span
+                        className={
+                          lu.predicted_net_rating >= 0 ? "text-emerald-400" : "text-red-400"
+                        }
+                      >
+                        {lu.predicted_net_rating >= 0
+                          ? `+${lu.predicted_net_rating.toFixed(2)}`
+                          : lu.predicted_net_rating.toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right text-gray-300">
+                      {lu.offensive_synergy >= 0
+                        ? `+${lu.offensive_synergy.toFixed(2)}`
+                        : lu.offensive_synergy.toFixed(2)}
+                    </td>
+                    <td className="py-3 px-3 text-right text-gray-300">
+                      {lu.defensive_synergy >= 0
+                        ? `+${lu.defensive_synergy.toFixed(2)}`
+                        : lu.defensive_synergy.toFixed(2)}
+                    </td>
+                    <td className="py-3 px-3 text-right text-cyan-300 font-bold">
+                      {lu.spacing_rating.toFixed(1)} / 10
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <button
+                        onClick={() => loadEvaluatedLineup(lu)}
+                        className="px-2.5 py-1 rounded bg-accent/20 hover:bg-accent text-accent hover:text-white border border-accent/40 font-bold transition"
+                      >
+                        Load 5 ON
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

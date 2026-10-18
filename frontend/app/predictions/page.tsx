@@ -6,6 +6,7 @@ import {
   Team,
   WinProbResult,
   HistoricalGame,
+  HistoricPerformance,
   SEASONS_10YR,
 } from "@/lib/data-service";
 import { resolveMatchupTeamColors } from "@/components/differential-candlestick-chart";
@@ -25,12 +26,14 @@ export default function PredictionsPage() {
   const [possessionHome, setPossessionHome] = useState<number>(1);
   const [winProb, setWinProb] = useState<WinProbResult | null>(null);
 
-  // 10-Season Historical Games Archive state
+  // 10-Season Historical Games Archive & Masterpieces state
+  const [archiveTab, setArchiveTab] = useState<"games" | "masterpieces">("games");
   const [archiveSeason, setArchiveSeason] = useState<string>("2024-25");
   const [archiveTeam, setArchiveTeam] = useState<string>("ALL");
   const [archiveType, setArchiveType] = useState<string>("ALL");
   const [archiveSearch, setArchiveSearch] = useState<string>("");
   const [historicalGames, setHistoricalGames] = useState<HistoricalGame[]>([]);
+  const [masterpieces, setMasterpieces] = useState<HistoricPerformance[]>([]);
 
   useEffect(() => {
     DataService.getTeams(homeSeason).then(setHomeTeams);
@@ -39,6 +42,10 @@ export default function PredictionsPage() {
   useEffect(() => {
     DataService.getTeams(awaySeason).then(setAwayTeams);
   }, [awaySeason]);
+
+  useEffect(() => {
+    setMasterpieces(DataService.getHistoricPerformances());
+  }, []);
 
   useEffect(() => {
     DataService.getHistoricalGames(archiveSeason, archiveTeam, archiveSearch).then(
@@ -79,7 +86,7 @@ export default function PredictionsPage() {
     [homeTeam, awayTeam]
   );
 
-  // Head to head matchup projection calculation
+  // Head to head matchup projection calculation + Best-of-7 Playoff Series
   const matchup = useMemo(() => {
     if (!homeTeam || !awayTeam) return null;
     const estPace = (homeTeam.pace + awayTeam.pace) / 2.0;
@@ -92,16 +99,38 @@ export default function PredictionsPage() {
 
     const projectedMargin = homeExpPts - awayExpPts;
     const homeWinProb = Math.min(0.94, Math.max(0.06, 0.5 + projectedMargin * 0.036));
+    const homeWinProbPct = Number((homeWinProb * 100).toFixed(1));
+    const seriesSim = DataService.simulatePlayoffSeries(homeWinProbPct);
 
     return {
       homeExpPts,
       awayExpPts,
       projectedMargin,
-      homeWinProb: Number((homeWinProb * 100).toFixed(1)),
+      homeWinProb: homeWinProbPct,
       awayWinProb: Number(((1.0 - homeWinProb) * 100).toFixed(1)),
       estPace: Number(estPace.toFixed(1)),
+      seriesSim,
     };
   }, [homeTeam, awayTeam]);
+
+  const filteredMasterpieces = useMemo(() => {
+    return masterpieces.filter((m) => {
+      if (archiveTeam !== "ALL" && !m.matchup.toUpperCase().includes(archiveTeam.toUpperCase())) {
+        return false;
+      }
+      if (archiveSearch) {
+        const q = archiveSearch.toLowerCase();
+        if (
+          !m.player_name.toLowerCase().includes(q) &&
+          !m.matchup.toLowerCase().includes(q) &&
+          !m.date.toLowerCase().includes(q)
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [masterpieces, archiveTeam, archiveSearch]);
 
   return (
     <div className="space-y-8">
@@ -109,10 +138,10 @@ export default function PredictionsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>🔮</span> Cross-Era Matchup Predictor &amp; 12,729-Game Historical Archive
+            <span>🔮</span> Cross-Era Matchup, Best-of-7 Series Simulator &amp; 12,729-Game Archive
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            Simulate head-to-head matchups across any of the last 10 seasons (2015-16 to 2024-25) and explore all 12,729 historical games.
+            Simulate single games &amp; Best-of-7 playoff series across 10 seasons, plus explore 12,729 games &amp; Top 200 historic box-score masterpieces.
           </p>
         </div>
 
@@ -143,14 +172,14 @@ export default function PredictionsPage() {
         </div>
       </div>
 
-      {/* Part 1: Multi-Season Head-to-Head Matchup Simulator */}
+      {/* Part 1: Multi-Season Head-to-Head Matchup & Best-of-7 Playoff Series Simulator */}
       <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-6">
         <div className="flex items-center justify-between border-b border-borderDark pb-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span>⚔️</span> Multi-Season Head-to-Head Projection (2015-16 to 2024-25)
+            <span>⚔️</span> Multi-Season Head-to-Head &amp; Best-of-7 Playoff Series Simulator
           </h2>
           <span className="text-xs font-mono text-gray-400">
-            Team-Colored Efficiency &amp; Pace Simulation
+            2-2-1-1-1 Playoff Format &amp; Team-Colored Efficiency Simulation
           </span>
         </div>
 
@@ -166,7 +195,7 @@ export default function PredictionsPage() {
                 className="text-xs uppercase font-mono font-extrabold"
                 style={{ color: homeColor }}
               >
-                🏠 Home Franchise
+                🏠 Home Court Advantage (Games 1, 2, 5, 7)
               </span>
               <select
                 value={homeSeason}
@@ -227,7 +256,7 @@ export default function PredictionsPage() {
                 className="text-xs uppercase font-mono font-extrabold"
                 style={{ color: awayColor }}
               >
-                ✈️ Away Franchise
+                ✈️ Road Challenger (Games 3, 4, 6)
               </span>
               <select
                 value={awaySeason}
@@ -279,60 +308,137 @@ export default function PredictionsPage() {
           </div>
         </div>
 
-        {/* Projected Outcome Card in Team Colors */}
+        {/* Projected Single Game & 7-Game Playoff Series Outcome */}
         {matchup && (
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-surface to-surfaceCard border border-borderDark text-center space-y-4">
-            <div className="flex items-center justify-center gap-8">
-              <div className="text-right">
-                <span className="text-xs font-mono text-gray-400 block">
-                  {homeSeason} {homeTeam?.abbreviation}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Single Game Projection */}
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-surface to-surfaceCard border border-borderDark text-center space-y-4 flex flex-col justify-between">
+              <div>
+                <span className="text-[11px] font-mono uppercase tracking-wider text-gray-400">
+                  Single-Game Matchup Projection (Game 1)
                 </span>
-                <span
-                  className="text-4xl font-extrabold font-mono"
-                  style={{ color: homeColor }}
-                >
-                  {matchup.homeExpPts}
-                </span>
+                <div className="flex items-center justify-center gap-8 mt-3">
+                  <div className="text-right">
+                    <span className="text-xs font-mono text-gray-400 block">
+                      {homeSeason} {homeTeam?.abbreviation}
+                    </span>
+                    <span
+                      className="text-4xl font-extrabold font-mono"
+                      style={{ color: homeColor }}
+                    >
+                      {matchup.homeExpPts}
+                    </span>
+                  </div>
+                  <span className="text-xl font-bold text-gray-500">&mdash;</span>
+                  <div className="text-left">
+                    <span className="text-xs font-mono text-gray-400 block">
+                      {awaySeason} {awayTeam?.abbreviation}
+                    </span>
+                    <span
+                      className="text-4xl font-extrabold font-mono"
+                      style={{ color: awayColor }}
+                    >
+                      {matchup.awayExpPts}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <span className="text-xl font-bold text-gray-500">&mdash;</span>
-              <div className="text-left">
-                <span className="text-xs font-mono text-gray-400 block">
-                  {awaySeason} {awayTeam?.abbreviation}
-                </span>
-                <span
-                  className="text-4xl font-extrabold font-mono"
-                  style={{ color: awayColor }}
-                >
-                  {matchup.awayExpPts}
-                </span>
+
+              {/* Win Probability Bar in Team Colors */}
+              <div className="w-full space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-mono font-extrabold">
+                  <span style={{ color: homeColor }}>
+                    {homeSeason} {homeTeam?.abbreviation} Win: {matchup.homeWinProb}%
+                  </span>
+                  <span style={{ color: awayColor }}>
+                    {awaySeason} {awayTeam?.abbreviation} Win: {matchup.awayWinProb}%
+                  </span>
+                </div>
+                <div className="w-full h-3.5 rounded-full bg-surface border border-borderDark overflow-hidden flex">
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{ width: `${matchup.homeWinProb}%`, backgroundColor: homeColor }}
+                  />
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{ width: `${matchup.awayWinProb}%`, backgroundColor: awayColor }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 font-mono mt-1">
+                  Projected Pace: {matchup.estPace} possessions &middot;{" "}
+                  {matchup.projectedMargin >= 0 ? homeTeam?.abbreviation : awayTeam?.abbreviation}{" "}
+                  favored by {Math.abs(matchup.projectedMargin)} pts
+                </p>
               </div>
             </div>
 
-            {/* Win Probability Bar in Team Colors */}
-            <div className="max-w-lg mx-auto space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-mono font-extrabold">
-                <span style={{ color: homeColor }}>
-                  {homeSeason} {homeTeam?.abbreviation} Win Prob: {matchup.homeWinProb}%
-                </span>
-                <span style={{ color: awayColor }}>
-                  {awaySeason} {awayTeam?.abbreviation} Win Prob: {matchup.awayWinProb}%
-                </span>
+            {/* Best-of-7 Playoff Series Exact Distribution */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-surface to-surfaceCard border border-borderDark space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-amber-300 font-bold block">
+                    🏆 Best-of-7 Playoff Series Simulator (2-2-1-1-1)
+                  </span>
+                  <span className="text-xs font-mono text-gray-400">
+                    Expected Series Length: <strong className="text-white">{matchup.seriesSim.expectedGames} Games</strong>
+                  </span>
+                </div>
+                <div className="text-right font-mono text-xs">
+                  <span style={{ color: homeColor }} className="font-extrabold block">
+                    {homeTeam?.abbreviation} Series: {matchup.seriesSim.homeSeriesWinPct}%
+                  </span>
+                  <span style={{ color: awayColor }} className="font-extrabold block">
+                    {awayTeam?.abbreviation} Series: {matchup.seriesSim.awaySeriesWinPct}%
+                  </span>
+                </div>
               </div>
-              <div className="w-full h-3.5 rounded-full bg-surface border border-borderDark overflow-hidden flex">
-                <div
-                  className="h-full transition-all duration-300"
-                  style={{ width: `${matchup.homeWinProb}%`, backgroundColor: homeColor }}
-                />
-                <div
-                  className="h-full transition-all duration-300"
-                  style={{ width: `${matchup.awayWinProb}%`, backgroundColor: awayColor }}
-                />
+
+              <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs pt-1">
+                {(["homeIn4", "homeIn5", "homeIn6", "homeIn7"] as const).map((k, idx) => {
+                  const pct = matchup.seriesSim[k];
+                  return (
+                    <div
+                      key={k}
+                      className="p-2.5 rounded-xl bg-surface border border-borderDark space-y-1"
+                    >
+                      <span className="text-[10px] text-gray-400 block">
+                        {homeTeam?.abbreviation} in {idx + 4}
+                      </span>
+                      <span className="text-sm font-extrabold block" style={{ color: homeColor }}>
+                        {pct}%
+                      </span>
+                      <div className="w-full h-1.5 bg-surfaceCard rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.min(100, pct * 2.5)}%`, backgroundColor: homeColor }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {(["awayIn4", "awayIn5", "awayIn6", "awayIn7"] as const).map((k, idx) => {
+                  const pct = matchup.seriesSim[k];
+                  return (
+                    <div
+                      key={k}
+                      className="p-2.5 rounded-xl bg-surface border border-borderDark space-y-1"
+                    >
+                      <span className="text-[10px] text-gray-400 block">
+                        {awayTeam?.abbreviation} in {idx + 4}
+                      </span>
+                      <span className="text-sm font-extrabold block" style={{ color: awayColor }}>
+                        {pct}%
+                      </span>
+                      <div className="w-full h-1.5 bg-surfaceCard rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.min(100, pct * 2.5)}%`, backgroundColor: awayColor }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-[11px] text-gray-400 font-mono mt-1">
-                Projected Pace: {matchup.estPace} possessions &middot;{" "}
-                {matchup.projectedMargin >= 0 ? homeTeam?.abbreviation : awayTeam?.abbreviation}{" "}
-                favored by {Math.abs(matchup.projectedMargin)} pts
-              </p>
             </div>
           </div>
         )}
@@ -503,38 +609,61 @@ export default function PredictionsPage() {
         </div>
       </div>
 
-      {/* Part 3: Complete 10-Season Historical Games Archive (12,729 Games) */}
+      {/* Part 3: Complete 10-Season Historical Games Archive & Top 200 Single-Game Masterpieces */}
       <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-borderDark pb-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-              <span>📚</span> Complete 10-Season NBA Game Results Archive (12,729 Games)
-            </h2>
-            <p className="text-xs text-gray-400 font-mono mt-0.5">
-              Every Regular Season &amp; Playoff game from 2015-16 through 2024-25. Filter by season, franchise, or date.
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-borderDark pb-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setArchiveTab("games")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-extrabold transition ${
+                  archiveTab === "games"
+                    ? "bg-accent text-white shadow-glow"
+                    : "bg-surface text-gray-400 hover:text-white border border-borderDark"
+                }`}
+              >
+                📚 12,729 Historical Games Archive
+              </button>
+              <button
+                onClick={() => setArchiveTab("masterpieces")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-extrabold transition ${
+                  archiveTab === "masterpieces"
+                    ? "bg-accent text-white shadow-glow"
+                    : "bg-surface text-gray-400 hover:text-white border border-borderDark"
+                }`}
+              >
+                🔥 Top 200 Single-Game Player Masterpieces (1.45M Logs)
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 font-mono">
+              {archiveTab === "games"
+                ? "Every Regular Season & Playoff game from 2015-16 through 2024-25. Filter by season, franchise, or date."
+                : "Greatest individual single-game box-score performances extracted from 1,452,208 historical player game logs sorted by Hollinger Game Score (GmSc)."}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono">
             <input
               type="text"
-              placeholder="Search date or matchup..."
+              placeholder={archiveTab === "games" ? "Search date or matchup..." : "Search player or matchup..."}
               value={archiveSearch}
               onChange={(e) => setArchiveSearch(e.target.value)}
-              className="bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-accent w-44"
+              className="bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-accent w-48"
             />
-            <select
-              value={archiveSeason}
-              onChange={(e) => setArchiveSeason(e.target.value)}
-              className="bg-surface border border-accent/50 rounded-xl px-3 py-1.5 font-bold text-white"
-            >
-              {SEASONS_10YR.map((s) => (
-                <option key={s} value={s}>
-                  {s} Season
-                </option>
-              ))}
-              <option value="ALL">All 10 Seasons (12,729 Games)</option>
-            </select>
+            {archiveTab === "games" && (
+              <select
+                value={archiveSeason}
+                onChange={(e) => setArchiveSeason(e.target.value)}
+                className="bg-surface border border-accent/50 rounded-xl px-3 py-1.5 font-bold text-white"
+              >
+                {SEASONS_10YR.map((s) => (
+                  <option key={s} value={s}>
+                    {s} Season
+                  </option>
+                ))}
+                <option value="ALL">All 10 Seasons (12,729 Games)</option>
+              </select>
+            )}
             <select
               value={archiveTeam}
               onChange={(e) => setArchiveTeam(e.target.value)}
@@ -547,80 +676,148 @@ export default function PredictionsPage() {
                 </option>
               ))}
             </select>
-            <select
-              value={archiveType}
-              onChange={(e) => setArchiveType(e.target.value)}
-              className="bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-white"
-            >
-              <option value="ALL">Reg Season + Playoffs</option>
-              <option value="Regular Season">Regular Season</option>
-              <option value="Playoffs">Playoffs</option>
-            </select>
+            {archiveTab === "games" && (
+              <select
+                value={archiveType}
+                onChange={(e) => setArchiveType(e.target.value)}
+                className="bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-white"
+              >
+                <option value="ALL">Reg Season + Playoffs</option>
+                <option value="Regular Season">Regular Season</option>
+                <option value="Playoffs">Playoffs</option>
+              </select>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs font-mono text-gray-400">
-          <span>
-            Matching Games: <strong className="text-white">{historicalGames.length.toLocaleString()}</strong>
-          </span>
-          <span>Showing top 150 matching results</span>
-        </div>
+        {archiveTab === "games" ? (
+          <>
+            <div className="flex items-center justify-between text-xs font-mono text-gray-400">
+              <span>
+                Matching Games: <strong className="text-white">{historicalGames.length.toLocaleString()}</strong>
+              </span>
+              <span>Showing top 150 matching results</span>
+            </div>
 
-        <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
-              <tr>
-                <th className="py-2.5 px-3">Date</th>
-                <th className="py-2.5 px-3">Season</th>
-                <th className="py-2.5 px-3">Stage</th>
-                <th className="py-2.5 px-3">Away Team</th>
-                <th className="py-2.5 px-3 text-center">Final Score</th>
-                <th className="py-2.5 px-3">Home Team</th>
-                <th className="py-2.5 px-3 text-right">Differential</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-borderDark/40">
-              {historicalGames.slice(0, 150).map((g) => {
-                const homeWon = g.h_pts >= g.a_pts;
-                return (
-                  <tr key={g.id} className="hover:bg-surface/60 transition">
-                    <td className="py-2.5 px-3 text-gray-300">{g.date}</td>
-                    <td className="py-2.5 px-3 text-gray-400">{g.season}</td>
-                    <td className="py-2.5 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          g.type === "Playoffs"
-                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                            : "bg-surface border border-borderDark text-gray-400"
+            <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
+                  <tr>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Season</th>
+                    <th className="py-2.5 px-3">Stage</th>
+                    <th className="py-2.5 px-3">Away Team</th>
+                    <th className="py-2.5 px-3 text-center">Final Score</th>
+                    <th className="py-2.5 px-3">Home Team</th>
+                    <th className="py-2.5 px-3 text-right">Differential</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-borderDark/40">
+                  {historicalGames.slice(0, 150).map((g) => {
+                    const homeWon = g.h_pts >= g.a_pts;
+                    return (
+                      <tr key={g.id} className="hover:bg-surface/60 transition">
+                        <td className="py-2.5 px-3 text-gray-300">{g.date}</td>
+                        <td className="py-2.5 px-3 text-gray-400">{g.season}</td>
+                        <td className="py-2.5 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              g.type === "Playoffs"
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                : "bg-surface border border-borderDark text-gray-400"
+                            }`}
+                          >
+                            {g.type}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={!homeWon ? "font-extrabold text-white" : "text-gray-400"}>
+                            {g.away} ({g.a_pts})
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-white">
+                          {g.a_pts} - {g.h_pts}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={homeWon ? "font-extrabold text-white" : "text-gray-400"}>
+                            {g.home} ({g.h_pts})
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold">
+                          <span className={homeWon ? "text-emerald-400" : "text-cyan-400"}>
+                            {homeWon ? `${g.home} +${g.margin}` : `${g.away} +${Math.abs(g.margin)}`}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
+                <tr>
+                  <th className="py-2.5 px-3">#</th>
+                  <th className="py-2.5 px-3">Player</th>
+                  <th className="py-2.5 px-3">Date &amp; Matchup</th>
+                  <th className="py-2.5 px-3 text-right">PTS</th>
+                  <th className="py-2.5 px-3 text-right">REB</th>
+                  <th className="py-2.5 px-3 text-right">AST</th>
+                  <th className="py-2.5 px-3 text-right">STL/BLK</th>
+                  <th className="py-2.5 px-3 text-right">FG</th>
+                  <th className="py-2.5 px-3 text-right">3PT</th>
+                  <th className="py-2.5 px-3 text-right">+/-</th>
+                  <th className="py-2.5 px-3 text-right">GmSc</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-borderDark/40">
+                {filteredMasterpieces.map((m, idx) => {
+                  const tm = m.matchup.split(" ")[0] || "NBA";
+                  return (
+                    <tr key={`${m.game_id}-${m.player_id}-${idx}`} className="hover:bg-surface/60 transition">
+                      <td className="py-2.5 px-3 text-gray-500 font-bold">{idx + 1}</td>
+                      <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-2">
+                        <span>{m.player_name}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-borderDark text-accent">
+                          {tm}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-gray-300">
+                        {m.date} &middot; <span className="text-gray-400">{m.matchup}</span>{" "}
+                        <span className={m.wl === "W" ? "text-emerald-400 font-bold" : "text-red-400"}>
+                          ({m.wl})
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-amber-300 font-extrabold text-sm">
+                        {m.pts}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-white font-bold">{m.reb}</td>
+                      <td className="py-2.5 px-3 text-right text-cyan-300 font-bold">{m.ast}</td>
+                      <td className="py-2.5 px-3 text-right text-gray-300">
+                        {m.stl} / {m.blk}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-gray-300">{m.fg}</td>
+                      <td className="py-2.5 px-3 text-right text-gray-300">{m.fg3}</td>
+                      <td
+                        className={`py-2.5 px-3 text-right font-bold ${
+                          m.plus_minus >= 0 ? "text-emerald-400" : "text-red-400"
                         }`}
                       >
-                        {g.type}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={!homeWon ? "font-extrabold text-white" : "text-gray-400"}>
-                        {g.away} ({g.a_pts})
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-bold text-white">
-                      {g.a_pts} - {g.h_pts}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={homeWon ? "font-extrabold text-white" : "text-gray-400"}>
-                        {g.home} ({g.h_pts})
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-bold">
-                      <span className={homeWon ? "text-emerald-400" : "text-cyan-400"}>
-                        {homeWon ? `${g.home} +${g.margin}` : `${g.away} +${Math.abs(g.margin)}`}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        {m.plus_minus >= 0 ? `+${m.plus_minus}` : m.plus_minus}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-extrabold text-emerald-400">
+                        {m.gm_score.toFixed(1)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

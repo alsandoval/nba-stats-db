@@ -12,6 +12,7 @@ import staticCBA from "./static-data/cba_aprons.json";
 import staticWOWY from "./static-data/wowy_lineups.json";
 import staticShots from "./static-data/shot_profiles.json";
 import staticMatchups from "./static-data/game_matchups.json";
+import staticScouting from "./static-data/scouting_clutch_hustle.json";
 import staticLiveFeed from "./static-data/live_game_feed.json";
 import staticScoreboard from "./static-data/live_scoreboard.json";
 
@@ -232,6 +233,18 @@ export interface Player {
   tsne_x?: number;
   tsne_y?: number;
   tsne_z?: number;
+  position?: string;
+  height?: string;
+  weight?: string;
+  college?: string;
+  country?: string;
+  draft_year?: string;
+  draft_number?: string;
+  deflections_pg?: number;
+  contested_pg?: number;
+  dfg_diff?: number;
+  clutch_pts?: number;
+  clutch_plus_minus?: number;
   pts_percentile: number;
   reb_percentile: number;
   ast_percentile: number;
@@ -284,6 +297,47 @@ export interface EvaluatedLineup {
   balance_grade: string;
 }
 
+export interface RealNBALineup {
+  group_id: string;
+  group_name: string;
+  team_id: number;
+  team_abbreviation: string;
+  gp: number;
+  w: number;
+  l: number;
+  w_pct: number;
+  min: number;
+  off_rating: number;
+  def_rating: number;
+  net_rating: number;
+  pace: number;
+  ts_pct: number;
+  pct_pts_paint: number;
+  pct_pts_fb: number;
+  opp_efg_pct: number;
+  player_id_list: number[];
+}
+
+export interface HistoricPerformance {
+  game_id: string;
+  player_id: number;
+  player_name: string;
+  date: string;
+  matchup: string;
+  wl: string;
+  min: number;
+  pts: number;
+  reb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  fg: string;
+  fg3: string;
+  ft: string;
+  plus_minus: number;
+  gm_score: number;
+}
+
 export interface HistoricalGame {
   id: string;
   season: string;
@@ -331,6 +385,10 @@ export interface CBATeam {
     no_trade_clause?: number | boolean;
     current_salary: number;
     cap_hit: number;
+    rapm?: number;
+    wins_added?: number;
+    pts?: number;
+    archetype?: string;
     schedule?: Array<{
       season: string;
       base_salary: number;
@@ -537,7 +595,24 @@ export const DataService = {
     return staticTeams.teams as Team[];
   },
 
-  // 2. PLAYERS (Supports all 10 seasons: 2015-16 through 2024-25, or "ALL" for all 7,128 player-seasons)
+  getTeamHistory(teamIdOrAbbr: number | string): Team[] {
+    const bySeason = (staticTeams as any).by_season || {};
+    const history: Team[] = [];
+    for (const s of [...SEASONS_10YR].reverse()) {
+      const list: Team[] = bySeason[s] || [];
+      const found = list.find(
+        (t) =>
+          t.team_id === teamIdOrAbbr ||
+          t.abbreviation.toUpperCase() === String(teamIdOrAbbr).toUpperCase()
+      );
+      if (found) {
+        history.push({ ...found, season: s });
+      }
+    }
+    return history;
+  },
+
+  // 2. PLAYERS (Supports all 10 seasons: 2015-16 through 2024-25, or "ALL" for all 5,393 player-seasons)
   async getPlayers(season: string = "2023-24"): Promise<Player[]> {
     const bySeason = (staticPlayers as any).by_season;
     if (bySeason) {
@@ -553,6 +628,19 @@ export const DataService = {
       }
     }
     return staticPlayers.players as Player[];
+  },
+
+  getPlayerCareerHistory(playerId: number): Player[] {
+    const bySeason = (staticPlayers as any).by_season || {};
+    const career: Player[] = [];
+    for (const s of [...SEASONS_10YR].reverse()) {
+      const list: Player[] = bySeason[s] || [];
+      const found = list.find((p) => p.player_id === playerId);
+      if (found) {
+        career.push({ ...found, season: s });
+      }
+    }
+    return career;
   },
 
   // 3. RAPM & LEBRON LEADERBOARD (Supports all 10 seasons + dynamic lambda shrinkage)
@@ -592,7 +680,7 @@ export const DataService = {
     return staticCBA.teams as unknown as CBATeam[];
   },
 
-  // 5. WOWY EVALUATION & 641 EVALUATED 5-MAN LINEUPS
+  // 5. WOWY EVALUATION, 641 EVALUATED 5-MAN LINEUPS & 500 REAL NBA LINEUPS
   getEvaluatedLineups(teamAbbr?: string): EvaluatedLineup[] {
     const teamsObj = (staticWOWY as any).teams || {};
     if (teamAbbr && teamAbbr !== "ALL") {
@@ -610,6 +698,106 @@ export const DataService = {
       }
     });
     return all.sort((a, b) => b.predicted_net_rating - a.predicted_net_rating);
+  },
+
+  getRealNBALineups(teamAbbr?: string): RealNBALineup[] {
+    const list: RealNBALineup[] = ((staticWOWY as any).real_nba_lineups || []) as RealNBALineup[];
+    if (teamAbbr && teamAbbr !== "ALL") {
+      return list.filter((l) => l.team_abbreviation === teamAbbr);
+    }
+    return list;
+  },
+
+  getScoutingDataset() {
+    return staticScouting;
+  },
+
+  getHistoricPerformances(): HistoricPerformance[] {
+    return ((staticScouting as any).historic_performances || []) as HistoricPerformance[];
+  },
+
+  simulatePlayoffSeries(homeSingleGameWinProbPct: number) {
+    // Exact 2-2-1-1-1 NBA Best-of-7 Playoff Series Distribution
+    // Games 1,2,5,7 are at Home; Games 3,4,6 are on the Road
+    const pHomeCourt = Math.min(0.95, Math.max(0.05, homeSingleGameWinProbPct / 100.0));
+    const pRoadCourt = Math.min(0.93, Math.max(0.07, pHomeCourt - 0.09));
+    const gameProbs = [pHomeCourt, pHomeCourt, pRoadCourt, pRoadCourt, pHomeCourt, pRoadCourt, pHomeCourt];
+
+    // DP state: dp[hWins][aWins] = probability
+    let dp: number[][] = Array.from({ length: 5 }, () => Array(5).fill(0));
+    dp[0][0] = 1.0;
+
+    const outcomes = {
+      homeIn4: 0,
+      homeIn5: 0,
+      homeIn6: 0,
+      homeIn7: 0,
+      awayIn4: 0,
+      awayIn5: 0,
+      awayIn6: 0,
+      awayIn7: 0,
+    };
+
+    for (let g = 0; g < 7; g++) {
+      const pH = gameProbs[g];
+      const pA = 1.0 - pH;
+      const nextDp: number[][] = Array.from({ length: 5 }, () => Array(5).fill(0));
+
+      for (let h = 0; h < 4; h++) {
+        for (let a = 0; a < 4; a++) {
+          const curP = dp[h][a];
+          if (curP <= 0) continue;
+          // Home wins game g+1
+          if (h + 1 === 4) {
+            const len = g + 1;
+            if (len === 4) outcomes.homeIn4 += curP * pH;
+            else if (len === 5) outcomes.homeIn5 += curP * pH;
+            else if (len === 6) outcomes.homeIn6 += curP * pH;
+            else if (len === 7) outcomes.homeIn7 += curP * pH;
+          } else {
+            nextDp[h + 1][a] += curP * pH;
+          }
+
+          // Away wins game g+1
+          if (a + 1 === 4) {
+            const len = g + 1;
+            if (len === 4) outcomes.awayIn4 += curP * pA;
+            else if (len === 5) outcomes.awayIn5 += curP * pA;
+            else if (len === 6) outcomes.awayIn6 += curP * pA;
+            else if (len === 7) outcomes.awayIn7 += curP * pA;
+          } else {
+            nextDp[h][a + 1] += curP * pA;
+          }
+        }
+      }
+      dp = nextDp;
+    }
+
+    const homeSeriesProb =
+      (outcomes.homeIn4 + outcomes.homeIn5 + outcomes.homeIn6 + outcomes.homeIn7) * 100;
+    const awaySeriesProb =
+      (outcomes.awayIn4 + outcomes.awayIn5 + outcomes.awayIn6 + outcomes.awayIn7) * 100;
+    const expGames =
+      4 * (outcomes.homeIn4 + outcomes.awayIn4) +
+      5 * (outcomes.homeIn5 + outcomes.awayIn5) +
+      6 * (outcomes.homeIn6 + outcomes.awayIn6) +
+      7 * (outcomes.homeIn7 + outcomes.awayIn7);
+
+    return {
+      homeSeriesProb: Number(homeSeriesProb.toFixed(1)),
+      awaySeriesProb: Number(awaySeriesProb.toFixed(1)),
+      homeSeriesWinPct: Number(homeSeriesProb.toFixed(1)),
+      awaySeriesWinPct: Number(awaySeriesProb.toFixed(1)),
+      expectedGames: Number(expGames.toFixed(2)),
+      homeIn4: Number((outcomes.homeIn4 * 100).toFixed(1)),
+      homeIn5: Number((outcomes.homeIn5 * 100).toFixed(1)),
+      homeIn6: Number((outcomes.homeIn6 * 100).toFixed(1)),
+      homeIn7: Number((outcomes.homeIn7 * 100).toFixed(1)),
+      awayIn4: Number((outcomes.awayIn4 * 100).toFixed(1)),
+      awayIn5: Number((outcomes.awayIn5 * 100).toFixed(1)),
+      awayIn6: Number((outcomes.awayIn6 * 100).toFixed(1)),
+      awayIn7: Number((outcomes.awayIn7 * 100).toFixed(1)),
+    };
   },
 
   async evaluateWOWY(
@@ -815,7 +1003,7 @@ export const DataService = {
     };
   },
 
-  // 9. GAME TIMELINE & 10-SEASON HISTORICAL GAMES ARCHIVE (13,100+ Games)
+  // 9. GAME TIMELINE & 10-SEASON HISTORICAL GAMES ARCHIVE (12,729 Games)
   getMarqueeTimeline() {
     return staticMatchups.marquee_games[0];
   },
@@ -823,7 +1011,6 @@ export const DataService = {
   async getHistoricalGames(season?: string, teamAbbr?: string, search?: string): Promise<HistoricalGame[]> {
     if (!cachedGames10Yr && typeof window !== "undefined") {
       try {
-        // Respect Next.js basePath if running on GitHub Pages (/nba-stats-db)
         const prefix = window.location.pathname.startsWith("/nba-stats-db") ? "/nba-stats-db" : "";
         const res = await fetch(`${prefix}/data/games_10yr.json`);
         if (res.ok) {
@@ -850,12 +1037,24 @@ export const DataService = {
     });
   },
 
-  // 10. CBA TRADE VALIDATOR (2023 Collective Bargaining Agreement Rules)
+  // 10. CBA TRADE VALIDATOR (2023 Collective Bargaining Agreement Rules + On-Court Impact)
   validateTrade(
     teamA: CBATeam,
     teamB: CBATeam,
-    teamASendPlayers: Array<{ contract_id: string | number; player_name: string; cap_hit: number }>,
-    teamBSendPlayers: Array<{ contract_id: string | number; player_name: string; cap_hit: number }>
+    teamASendPlayers: Array<{
+      contract_id: string | number;
+      player_name: string;
+      cap_hit: number;
+      rapm?: number;
+      wins_added?: number;
+    }>,
+    teamBSendPlayers: Array<{
+      contract_id: string | number;
+      player_name: string;
+      cap_hit: number;
+      rapm?: number;
+      wins_added?: number;
+    }>
   ) {
     const reasons: string[] = [];
     const aOut = teamASendPlayers.reduce((s, p) => s + (p.cap_hit || 0), 0);
@@ -863,6 +1062,16 @@ export const DataService = {
 
     const aIn = bOut;
     const bIn = aOut;
+
+    const aRapmOut = teamASendPlayers.reduce((s, p) => s + (p.rapm || 0), 0);
+    const bRapmOut = teamBSendPlayers.reduce((s, p) => s + (p.rapm || 0), 0);
+    const aWinsOut = teamASendPlayers.reduce((s, p) => s + (p.wins_added || 0), 0);
+    const bWinsOut = teamBSendPlayers.reduce((s, p) => s + (p.wins_added || 0), 0);
+
+    const teamA_rapm_delta = Number((bRapmOut - aRapmOut).toFixed(2));
+    const teamB_rapm_delta = Number((aRapmOut - bRapmOut).toFixed(2));
+    const teamA_wins_delta = Number((bWinsOut - aWinsOut).toFixed(1));
+    const teamB_wins_delta = Number((aWinsOut - bWinsOut).toFixed(1));
 
     let aAllowed = 0;
     if (teamA.total_taxable_payroll > teamA.second_apron) {
@@ -924,6 +1133,10 @@ export const DataService = {
       teamB_new_payroll: bNewPayroll,
       teamA_tax_impact: aNewPayroll - teamA.total_taxable_payroll,
       teamB_tax_impact: bNewPayroll - teamB.total_taxable_payroll,
+      teamA_rapm_delta,
+      teamB_rapm_delta,
+      teamA_wins_delta,
+      teamB_wins_delta,
     };
   },
 

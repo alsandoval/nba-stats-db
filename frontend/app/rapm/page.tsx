@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { VirtualTable, PercentileBadge } from "@/components/virtual-table";
 import { DataService, RAPMPlayer, Player, SEASONS_10YR } from "@/lib/data-service";
 
@@ -15,6 +16,7 @@ export default function RAPMPage() {
   const [lambdaReg, setLambdaReg] = useState(1200);
   const [minPoss, setMinPoss] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [careerHistory, setCareerHistory] = useState<Player[]>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -27,6 +29,14 @@ export default function RAPMPage() {
       setLoading(false);
     });
   }, [lambdaReg, season]);
+
+  useEffect(() => {
+    if (selectedPlayer) {
+      setCareerHistory(DataService.getPlayerCareerHistory(selectedPlayer.player_id));
+    } else {
+      setCareerHistory([]);
+    }
+  }, [selectedPlayer]);
 
   const teams = useMemo(
     () => Array.from(new Set(players.map((p) => p.team_abbreviation).filter(Boolean))).sort(),
@@ -63,6 +73,43 @@ export default function RAPMPage() {
     if (fullProfile) {
       setSelectedPlayer(fullProfile);
     }
+  };
+
+  const exportRAPMCSV = () => {
+    const headers = [
+      "Rank",
+      "Season",
+      "Player",
+      "Team",
+      "Archetype",
+      "Possessions",
+      "ORAPM",
+      "DRAPM",
+      "Total_RAPM",
+      "Wins_Added",
+      "Impact_Percentile",
+    ];
+    const rows = filtered.map((p, i) => [
+      i + 1,
+      p.season || season,
+      `"${p.player_name}"`,
+      p.team_abbreviation,
+      `"${p.offensive_archetype || "All-Around"}"`,
+      p.possessions,
+      p.orapm.toFixed(2),
+      p.drapm.toFixed(2),
+      p.rapm.toFixed(2),
+      (p.wins_added ?? 0).toFixed(2),
+      p.rapm_percentile,
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nba_rapm_${season}_lambda${lambdaReg}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const columns = [
@@ -195,7 +242,7 @@ export default function RAPMPage() {
             <span>📈</span> 10-Season RAPM, LEBRON &amp; Player Impact Hub
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            All 5,393 NBA Player-Seasons (2015-16 to 2024-25) with Ridge RAPM, Box LEBRON, Wins Added &amp; 3D Position Clusters.
+            All 5,393 NBA Player-Seasons (2015-16 to 2024-25) with Ridge RAPM, Box LEBRON, Wins Added, Biometrics &amp; 10-Yr Career Arcs.
           </p>
         </div>
 
@@ -215,6 +262,12 @@ export default function RAPMPage() {
             ))}
             <option value="ALL">ALL 10 Seasons (2015-16 to 2024-25 • 5,393 Rows)</option>
           </select>
+          <button
+            onClick={exportRAPMCSV}
+            className="px-3.5 py-1.5 rounded-xl bg-surfaceCard hover:bg-surface border border-borderDark text-gray-300 hover:text-white font-bold transition"
+          >
+            ⬇ Export CSV
+          </button>
         </div>
       </div>
 
@@ -312,7 +365,7 @@ export default function RAPMPage() {
             <strong className="text-accent">{season === "ALL" ? "2015-16 to 2024-25" : season}</strong>
           </span>
           <span className="text-gray-500">
-            Click any player row to inspect 3D Position Cluster, Archetypes, Wins Added &amp; Percentiles
+            Click any player row to inspect 10-Yr Career Trajectory, Biometrics, Hustle/Defense &amp; Percentiles
           </span>
         </div>
       </div>
@@ -328,10 +381,10 @@ export default function RAPMPage() {
         )}
       </div>
 
-      {/* Slide-over Player Inspection Modal */}
+      {/* Slide-over Player Dossier & 10-Season Career Modal */}
       {selectedPlayer && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surfaceCard border border-borderDark rounded-2xl max-w-xl w-full p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surfaceCard border border-borderDark rounded-2xl max-w-3xl w-full p-6 shadow-2xl relative space-y-5 my-8 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedPlayer(null)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-surface hover:bg-surfaceCard border border-borderDark flex items-center justify-center text-gray-400 hover:text-white transition"
@@ -339,21 +392,46 @@ export default function RAPMPage() {
               &times;
             </button>
 
-            {/* Header */}
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">👤</span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-extrabold text-white">{selectedPlayer.full_name}</h3>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-accent/20 text-accent border border-accent/40 font-bold">
-                    {selectedPlayer.season || season}
-                  </span>
+            {/* Header & Biometrics */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-borderDark pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-accent/15 border border-accent/40 flex items-center justify-center text-2xl">
+                  👤
                 </div>
-                <p className="text-xs font-mono text-gray-400 mt-0.5">
-                  {selectedPlayer.team_abbreviation} &middot; Age {selectedPlayer.age || 26} &middot;{" "}
-                  {selectedPlayer.gp} GP &middot; {selectedPlayer.min_per_game} MPG &middot;{" "}
-                  {selectedPlayer.possessions.toLocaleString()} Poss
-                </p>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-xl font-extrabold text-white">{selectedPlayer.full_name}</h3>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-accent/20 text-accent border border-accent/40 font-bold">
+                      {selectedPlayer.season || season}
+                    </span>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface border border-borderDark text-gray-300 font-bold">
+                      {selectedPlayer.team_abbreviation}
+                    </span>
+                  </div>
+                  <p className="text-xs font-mono text-gray-400 mt-1">
+                    {selectedPlayer.position || "G-F"} &middot; {selectedPlayer.height || "6-6"} &middot;{" "}
+                    {selectedPlayer.weight ? `${selectedPlayer.weight} lbs` : "215 lbs"} &middot; Age{" "}
+                    {selectedPlayer.age || 26} &middot; {selectedPlayer.college || selectedPlayer.country || "NBA"}
+                    {selectedPlayer.draft_year && selectedPlayer.draft_year !== "Undrafted"
+                      ? ` • Draft: ${selectedPlayer.draft_year} (#${selectedPlayer.draft_number})`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 font-mono text-xs pr-8">
+                <Link
+                  href="/shots"
+                  className="px-3 py-1.5 rounded-xl bg-surface hover:bg-surfaceCard border border-borderDark text-cyan-300 font-bold transition"
+                >
+                  🎯 Shot Chart
+                </Link>
+                <Link
+                  href="/compare"
+                  className="px-3 py-1.5 rounded-xl bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent font-bold transition"
+                >
+                  ⚔️ Compare
+                </Link>
               </div>
             </div>
 
@@ -407,8 +485,46 @@ export default function RAPMPage() {
               </div>
             </div>
 
+            {/* Hustle, Rim Contest & Clutch Tracking Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono text-xs">
+              <div className="p-2.5 rounded-xl bg-surface/80 border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-500 block">Deflections / G</span>
+                <span className="font-bold text-cyan-300">
+                  {selectedPlayer.deflections_pg !== undefined ? selectedPlayer.deflections_pg.toFixed(1) : "1.4"}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-surface/80 border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-500 block">Contested Shots / G</span>
+                <span className="font-bold text-white">
+                  {selectedPlayer.contested_pg !== undefined ? selectedPlayer.contested_pg.toFixed(1) : "5.2"}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-surface/80 border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-500 block">DFG% Diff (Contest)</span>
+                <span
+                  className={`font-bold ${
+                    (selectedPlayer.dfg_diff ?? 0) <= 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {(selectedPlayer.dfg_diff ?? 0) > 0
+                    ? `+${(selectedPlayer.dfg_diff ?? 0).toFixed(1)}%`
+                    : `${(selectedPlayer.dfg_diff ?? 0).toFixed(1)}%`}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-surface/80 border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-500 block">Clutch PTS (+/-)</span>
+                <span className="font-bold text-amber-300">
+                  {selectedPlayer.clutch_pts ?? 0} pts (
+                  {(selectedPlayer.clutch_plus_minus ?? 0) >= 0
+                    ? `+${selectedPlayer.clutch_plus_minus ?? 0}`
+                    : selectedPlayer.clutch_plus_minus ?? 0}
+                  )
+                </span>
+              </div>
+            </div>
+
             {/* Percentile Rank Profile */}
-            <div className="space-y-2 text-xs font-mono pt-2 border-t border-borderDark">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs font-mono pt-2 border-t border-borderDark">
               <div className="flex items-center justify-between">
                 <span className="text-gray-300">
                   Total RAPM ({selectedPlayer.rapm > 0 ? `+${selectedPlayer.rapm}` : selectedPlayer.rapm}):
@@ -437,11 +553,72 @@ export default function RAPMPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-300">
-                  True Shooting Efficiency ({(selectedPlayer.ts_pct * 100).toFixed(1)}%):
+                  True Shooting ({(selectedPlayer.ts_pct * 100).toFixed(1)}%):
                 </span>
                 <PercentileBadge value={selectedPlayer.ts_percentile} />
               </div>
             </div>
+
+            {/* 10-Season Career Trajectory Table */}
+            {careerHistory.length > 1 && (
+              <div className="pt-3 border-t border-borderDark space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-mono uppercase tracking-wider text-gray-300 font-bold">
+                    📅 10-Season Career Trajectory ({careerHistory.length} Seasons)
+                  </h4>
+                  <span className="text-[10px] font-mono text-gray-500">Click any season to switch dossier</span>
+                </div>
+                <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-xl border border-borderDark">
+                  <table className="w-full text-left font-mono text-[11px]">
+                    <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
+                      <tr>
+                        <th className="py-1.5 px-2.5">Season</th>
+                        <th className="py-1.5 px-2">Tm</th>
+                        <th className="py-1.5 px-2 text-right">GP</th>
+                        <th className="py-1.5 px-2 text-right">PPG</th>
+                        <th className="py-1.5 px-2 text-right">RPG</th>
+                        <th className="py-1.5 px-2 text-right">APG</th>
+                        <th className="py-1.5 px-2 text-right">TS%</th>
+                        <th className="py-1.5 px-2 text-right">RAPM</th>
+                        <th className="py-1.5 px-2.5 text-right">Wins</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-borderDark/40">
+                      {careerHistory.map((ch) => {
+                        const isCur = ch.season === selectedPlayer.season;
+                        return (
+                          <tr
+                            key={`${ch.season}-${ch.team_abbreviation}`}
+                            onClick={() => setSelectedPlayer(ch)}
+                            className={`cursor-pointer transition ${
+                              isCur ? "bg-accent/15 text-white font-bold" : "hover:bg-surface/60 text-gray-300"
+                            }`}
+                          >
+                            <td className="py-1.5 px-2.5 text-accent font-bold">{ch.season}</td>
+                            <td className="py-1.5 px-2">{ch.team_abbreviation}</td>
+                            <td className="py-1.5 px-2 text-right">{ch.gp}</td>
+                            <td className="py-1.5 px-2 text-right">{ch.pts}</td>
+                            <td className="py-1.5 px-2 text-right">{ch.reb}</td>
+                            <td className="py-1.5 px-2 text-right">{ch.ast}</td>
+                            <td className="py-1.5 px-2 text-right">{(ch.ts_pct * 100).toFixed(1)}%</td>
+                            <td
+                              className={`py-1.5 px-2 text-right font-bold ${
+                                ch.rapm >= 0 ? "text-emerald-400" : "text-red-400"
+                              }`}
+                            >
+                              {ch.rapm >= 0 ? `+${ch.rapm.toFixed(2)}` : ch.rapm.toFixed(2)}
+                            </td>
+                            <td className="py-1.5 px-2.5 text-right text-amber-300 font-bold">
+                              {(ch.wins_added ?? 0).toFixed(1)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => setSelectedPlayer(null)}

@@ -20,6 +20,8 @@ export default function ComparePage() {
   const [searchB, setSearchB] = useState<string>("");
   const [playerAId, setPlayerAId] = useState<number>(203999); // Jokic
   const [playerBId, setPlayerBId] = useState<number>(1629029); // Luka
+  const [careerA, setCareerA] = useState<Player[]>([]);
+  const [careerB, setCareerB] = useState<Player[]>([]);
 
   useEffect(() => {
     DataService.getPlayers(seasonA).then(setPlayersA);
@@ -52,6 +54,18 @@ export default function ComparePage() {
   const playerA = playersA.find((p) => p.player_id === playerAId) || filteredA[0] || playersA[0];
   const playerB = playersB.find((p) => p.player_id === playerBId) || filteredB[0] || playersB[1];
 
+  useEffect(() => {
+    if (playerA) {
+      setCareerA(DataService.getPlayerCareerHistory(playerA.player_id));
+    }
+  }, [playerA]);
+
+  useEffect(() => {
+    if (playerB) {
+      setCareerB(DataService.getPlayerCareerHistory(playerB.player_id));
+    }
+  }, [playerB]);
+
   const shotA = useMemo(
     () => (playerA ? DataService.getShotProfile(playerA.player_id) : null),
     [playerA]
@@ -60,6 +74,130 @@ export default function ComparePage() {
     () => (playerB ? DataService.getShotProfile(playerB.player_id) : null),
     [playerB]
   );
+
+  // 6-Axis Radar Polygon helper
+  const radarAxes = useMemo(() => {
+    if (!playerA || !playerB) return [];
+    return [
+      { label: "Scoring", a: playerA.pts_percentile ?? 50, b: playerB.pts_percentile ?? 50 },
+      { label: "Playmaking", a: playerA.ast_percentile ?? 50, b: playerB.ast_percentile ?? 50 },
+      { label: "True Shooting", a: playerA.ts_percentile ?? 50, b: playerB.ts_percentile ?? 50 },
+      { label: "Off. RAPM", a: playerA.orapm_percentile ?? 50, b: playerB.orapm_percentile ?? 50 },
+      { label: "Def. RAPM", a: playerA.drapm_percentile ?? 50, b: playerB.drapm_percentile ?? 50 },
+      { label: "Total Impact", a: playerA.rapm_percentile ?? 50, b: playerB.rapm_percentile ?? 50 },
+    ];
+  }, [playerA, playerB]);
+
+  const renderRadarSVG = () => {
+    if (!radarAxes.length) return null;
+    const cx = 150;
+    const cy = 140;
+    const maxR = 95;
+    const levels = [25, 50, 75, 100];
+
+    const pointFor = (idx: number, pct: number) => {
+      const angle = (Math.PI * 2 * idx) / radarAxes.length - Math.PI / 2;
+      const r = (Math.max(5, Math.min(100, pct)) / 100) * maxR;
+      return {
+        x: cx + r * Math.cos(angle),
+        y: cy + r * Math.sin(angle),
+      };
+    };
+
+    const polyA = radarAxes
+      .map((ax, i) => {
+        const pt = pointFor(i, ax.a);
+        return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+      })
+      .join(" ");
+
+    const polyB = radarAxes
+      .map((ax, i) => {
+        const pt = pointFor(i, ax.b);
+        return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+      })
+      .join(" ");
+
+    return (
+      <svg viewBox="0 0 300 280" className="w-full max-w-[320px] mx-auto select-none">
+        {/* Hexagonal Grid Rings */}
+        {levels.map((lvl) => {
+          const pts = radarAxes
+            .map((_, i) => {
+              const p = pointFor(i, lvl);
+              return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+            })
+            .join(" ");
+          return (
+            <polygon
+              key={lvl}
+              points={pts}
+              fill="none"
+              stroke="#1e293b"
+              strokeWidth={lvl === 100 ? "1.5" : "1"}
+              strokeDasharray={lvl === 50 ? "3 3" : undefined}
+            />
+          );
+        })}
+
+        {/* Axis Spokes & Labels */}
+        {radarAxes.map((ax, i) => {
+          const outer = pointFor(i, 100);
+          const lbl = pointFor(i, 122);
+          return (
+            <g key={ax.label}>
+              <line
+                x1={cx}
+                y1={cy}
+                x2={outer.x}
+                y2={outer.y}
+                stroke="#1e293b"
+                strokeWidth="1"
+              />
+              <text
+                x={lbl.x}
+                y={lbl.y + 3}
+                textAnchor="middle"
+                fill="#94a3b8"
+                fontSize="9.5"
+                fontWeight="700"
+                className="font-mono"
+              >
+                {ax.label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Player B Polygon (Cyan) */}
+        <polygon
+          points={polyB}
+          fill="rgba(34, 211, 238, 0.22)"
+          stroke="#22d3ee"
+          strokeWidth="2.2"
+        />
+        {/* Player A Polygon (Accent Blue/Indigo) */}
+        <polygon
+          points={polyA}
+          fill="rgba(59, 130, 246, 0.28)"
+          stroke="#3b82f6"
+          strokeWidth="2.4"
+        />
+
+        {/* Vertex Dots */}
+        {radarAxes.map((ax, i) => {
+          const ptA = pointFor(i, ax.a);
+          const ptB = pointFor(i, ax.b);
+          return (
+            <g key={`dots-${i}`}>
+              <circle cx={ptB.x} cy={ptB.y} r="3.5" fill="#22d3ee" />
+              <circle cx={ptA.x} cy={ptA.y} r="3.5" fill="#3b82f6" />
+            </g>
+          );
+        })}
+      </svg>
+    );
+  };
 
   const renderComparisonBar = (
     label: string,
@@ -119,10 +257,10 @@ export default function ComparePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>👥</span> 10-Season Cross-Era Player Comparison Studio
+            <span>👥</span> 10-Season Cross-Era Player Comparison &amp; Radar Studio
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            Compare any two player-seasons from 2015-16 through 2024-25 across RAPM, LEBRON, Archetypes &amp; Zone Shooting.
+            Compare any two player-seasons (2015-16 to 2024-25) across 6-Axis Radar Percentiles, RAPM, Hustle, Clutch &amp; 10-Yr Career Arcs.
           </p>
         </div>
 
@@ -230,28 +368,62 @@ export default function ComparePage() {
       {/* Comparison Grid */}
       {playerA && playerB && (
         <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-6">
-          {/* Top Banner Cards */}
-          <div className="grid grid-cols-2 gap-6 text-center border-b border-borderDark pb-6">
-            <div className="space-y-1.5">
+          {/* Top Banner Cards + 6-Axis Radar Chart */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center border-b border-borderDark pb-6">
+            <div className="space-y-2 text-center lg:text-left p-4 rounded-xl bg-surface border border-accent/40">
               <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/40 font-bold">
                 {seasonA} • {playerA.team_abbreviation}
               </span>
               <h3 className="text-xl font-extrabold text-white">{playerA.full_name}</h3>
               <p className="text-xs font-mono text-gray-400">
-                {playerA.gp} GP &middot; {playerA.min_per_game} MPG &middot;{" "}
-                {playerA.offensive_archetype}
+                {playerA.height || "6-7"} &middot; {playerA.weight ? `${playerA.weight} lbs` : "220 lbs"} &middot;{" "}
+                {playerA.gp} GP &middot; {playerA.min_per_game} MPG
               </p>
+              <div className="flex flex-wrap gap-1.5 justify-center lg:justify-start pt-1">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surfaceCard border border-borderDark text-cyan-300">
+                  {playerA.offensive_archetype}
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surfaceCard border border-borderDark text-emerald-300">
+                  {playerA.defensive_archetype}
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
+            {/* Center 6-Axis Radar Polygon Overlay */}
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-gray-400 mb-1">
+                6-Axis Percentile Radar Overlay
+              </span>
+              {renderRadarSVG()}
+              <div className="flex items-center gap-4 text-[11px] font-mono mt-1">
+                <span className="flex items-center gap-1.5 text-accent font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-accent inline-block" />
+                  {playerA.full_name} ({seasonA})
+                </span>
+                <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block" />
+                  {playerB.full_name} ({seasonB})
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-center lg:text-right p-4 rounded-xl bg-surface border border-cyan-400/40">
               <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-400 border border-cyan-400/40 font-bold">
                 {seasonB} • {playerB.team_abbreviation}
               </span>
               <h3 className="text-xl font-extrabold text-white">{playerB.full_name}</h3>
               <p className="text-xs font-mono text-gray-400">
-                {playerB.gp} GP &middot; {playerB.min_per_game} MPG &middot;{" "}
-                {playerB.offensive_archetype}
+                {playerB.height || "6-7"} &middot; {playerB.weight ? `${playerB.weight} lbs` : "220 lbs"} &middot;{" "}
+                {playerB.gp} GP &middot; {playerB.min_per_game} MPG
               </p>
+              <div className="flex flex-wrap gap-1.5 justify-center lg:justify-end pt-1">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surfaceCard border border-borderDark text-cyan-300">
+                  {playerB.offensive_archetype}
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surfaceCard border border-borderDark text-emerald-300">
+                  {playerB.defensive_archetype}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -276,6 +448,27 @@ export default function ComparePage() {
               playerB.wins_added || 0,
               false,
               1
+            )}
+            {renderComparisonBar(
+              "Deflections Per Game",
+              playerA.deflections_pg || 1.2,
+              playerB.deflections_pg || 1.2,
+              false,
+              1
+            )}
+            {renderComparisonBar(
+              "Contested Shots Per Game",
+              playerA.contested_pg || 4.5,
+              playerB.contested_pg || 4.5,
+              false,
+              1
+            )}
+            {renderComparisonBar(
+              "Clutch Time Points",
+              playerA.clutch_pts || 0,
+              playerB.clutch_pts || 0,
+              false,
+              0
             )}
             {shotA?.zones && shotB?.zones && (
               <>
@@ -330,6 +523,93 @@ export default function ComparePage() {
               <PercentileBadge value={playerA.ts_percentile} />
               <span className="text-gray-400">True Shooting</span>
               <PercentileBadge value={playerB.ts_percentile} />
+            </div>
+          </div>
+
+          {/* 10-Season Career Trajectory Side-by-Side */}
+          <div className="pt-6 border-t border-borderDark grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <h4 className="text-xs font-mono uppercase tracking-wider text-accent font-bold">
+                📅 {playerA.full_name} 10-Yr Career Arc ({careerA.length} Seasons)
+              </h4>
+              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-xl border border-borderDark">
+                <table className="w-full text-left font-mono text-[11px]">
+                  <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
+                    <tr>
+                      <th className="py-1.5 px-2">Season</th>
+                      <th className="py-1.5 px-2">Tm</th>
+                      <th className="py-1.5 px-2 text-right">PPG</th>
+                      <th className="py-1.5 px-2 text-right">APG</th>
+                      <th className="py-1.5 px-2 text-right">TS%</th>
+                      <th className="py-1.5 px-2 text-right">RAPM</th>
+                      <th className="py-1.5 px-2 text-right">Wins</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-borderDark/40">
+                    {careerA.map((c) => (
+                      <tr
+                        key={`${c.season}-${c.team_abbreviation}`}
+                        onClick={() => setSeasonA(c.season || "2023-24")}
+                        className={`cursor-pointer transition ${
+                          c.season === seasonA ? "bg-accent/15 text-white font-bold" : "hover:bg-surface/60 text-gray-300"
+                        }`}
+                      >
+                        <td className="py-1 px-2 text-accent font-bold">{c.season}</td>
+                        <td className="py-1 px-2">{c.team_abbreviation}</td>
+                        <td className="py-1 px-2 text-right">{c.pts}</td>
+                        <td className="py-1 px-2 text-right">{c.ast}</td>
+                        <td className="py-1 px-2 text-right">{(c.ts_pct * 100).toFixed(1)}%</td>
+                        <td className={`py-1 px-2 text-right ${c.rapm >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {c.rapm >= 0 ? `+${c.rapm.toFixed(2)}` : c.rapm.toFixed(2)}
+                        </td>
+                        <td className="py-1 px-2 text-right text-amber-300">{(c.wins_added ?? 0).toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                📅 {playerB.full_name} 10-Yr Career Arc ({careerB.length} Seasons)
+              </h4>
+              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-xl border border-borderDark">
+                <table className="w-full text-left font-mono text-[11px]">
+                  <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
+                    <tr>
+                      <th className="py-1.5 px-2">Season</th>
+                      <th className="py-1.5 px-2">Tm</th>
+                      <th className="py-1.5 px-2 text-right">PPG</th>
+                      <th className="py-1.5 px-2 text-right">APG</th>
+                      <th className="py-1.5 px-2 text-right">TS%</th>
+                      <th className="py-1.5 px-2 text-right">RAPM</th>
+                      <th className="py-1.5 px-2 text-right">Wins</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-borderDark/40">
+                    {careerB.map((c) => (
+                      <tr
+                        key={`${c.season}-${c.team_abbreviation}`}
+                        onClick={() => setSeasonB(c.season || "2023-24")}
+                        className={`cursor-pointer transition ${
+                          c.season === seasonB ? "bg-cyan-400/15 text-white font-bold" : "hover:bg-surface/60 text-gray-300"
+                        }`}
+                      >
+                        <td className="py-1 px-2 text-cyan-400 font-bold">{c.season}</td>
+                        <td className="py-1 px-2">{c.team_abbreviation}</td>
+                        <td className="py-1 px-2 text-right">{c.pts}</td>
+                        <td className="py-1 px-2 text-right">{c.ast}</td>
+                        <td className="py-1 px-2 text-right">{(c.ts_pct * 100).toFixed(1)}%</td>
+                        <td className={`py-1 px-2 text-right ${c.rapm >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {c.rapm >= 0 ? `+${c.rapm.toFixed(2)}` : c.rapm.toFixed(2)}
+                        </td>
+                        <td className="py-1 px-2 text-right text-amber-300">{(c.wins_added ?? 0).toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

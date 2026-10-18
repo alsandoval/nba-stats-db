@@ -61,6 +61,18 @@ export default function CBAPage() {
     setTeamBSendIds([]);
   };
 
+  const loadPresetTrade = (idxA: number, idxB: number, contractRankA: number, contractRankB: number) => {
+    if (cbaTeams.length <= Math.max(idxA, idxB)) return;
+    const tA = cbaTeams[idxA];
+    const tB = cbaTeams[idxB];
+    setSelectedTeamAId(tA.team_id);
+    setSelectedTeamBId(tB.team_id);
+    const cA = tA.contracts[contractRankA] || tA.contracts[0];
+    const cB = tB.contracts[contractRankB] || tB.contracts[0];
+    setTeamASendIds(cA ? [cA.contract_id] : []);
+    setTeamBSendIds(cB ? [cB.contract_id] : []);
+  };
+
   // Flatten all 450 contracts across all 30 teams
   const allContracts = useMemo(() => {
     const list: Array<CBATeam["contracts"][0]> = [];
@@ -93,10 +105,10 @@ export default function CBAPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>⚖️</span> 2023 CBA Capology, Aprons &amp; 450-Contract Trade Machine
+            <span>⚖️</span> 2023 CBA Capology, Aprons &amp; On-Court RAPM Trade Machine
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            All {allContracts.length} Active NBA Contracts, Multi-Year Cap Schedules, First Apron ($178.1M) &amp; Second Apron ($188.9M)
+            All {allContracts.length} Active NBA Contracts, Multi-Year Cap Schedules, First/Second Aprons &amp; Projected Wins Added Delta.
           </p>
         </div>
 
@@ -138,9 +150,40 @@ export default function CBAPage() {
       {activeTab === "trade" ? (
         /* TRADE MACHINE VIEW */
         <div className="space-y-6">
-          {/* Trade Decision Banner */}
+          {/* Quick Trade Scenarios Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-surfaceCard border border-borderDark rounded-2xl px-4 py-3 text-xs font-mono">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-gray-400 font-bold">Quick Trade Scenarios:</span>
+              <button
+                onClick={() => loadPresetTrade(0, 1, 2, 2)}
+                className="px-3 py-1 rounded-lg bg-surface hover:bg-surfaceCard border border-borderDark text-gray-200 hover:text-white transition"
+              >
+                🔥 Starter Swap (#3 Contract)
+              </button>
+              <button
+                onClick={() => loadPresetTrade(2, 5, 1, 1)}
+                className="px-3 py-1 rounded-lg bg-surface hover:bg-surfaceCard border border-borderDark text-gray-200 hover:text-white transition"
+              >
+                💎 Co-Star Blockbuster (#2 Contract)
+              </button>
+              <button
+                onClick={() => loadPresetTrade(4, 8, 4, 4)}
+                className="px-3 py-1 rounded-lg bg-surface hover:bg-surfaceCard border border-borderDark text-gray-200 hover:text-white transition"
+              >
+                ⚡ Rotation Wing Swap (#5 Contract)
+              </button>
+            </div>
+            <button
+              onClick={clearTrade}
+              className="px-3 py-1 bg-surface hover:bg-red-950/40 border border-borderDark hover:border-red-500/40 rounded-lg text-gray-400 hover:text-red-300 font-bold transition"
+            >
+              Reset Proposal
+            </button>
+          </div>
+
+          {/* Trade Decision & On-Court Impact Banner */}
           <div
-            className={`p-5 rounded-2xl border transition shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+            className={`p-5 rounded-2xl border transition shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
               !teamASendPlayers.length && !teamBSendPlayers.length
                 ? "bg-surfaceCard border-borderDark text-gray-300"
                 : tradeResult?.is_legal
@@ -159,10 +202,10 @@ export default function CBAPage() {
               <div>
                 <h3 className="text-lg font-extrabold">
                   {!teamASendPlayers.length && !teamBSendPlayers.length
-                    ? "Select Players to Propose Trade"
+                    ? "Select Players Below or Click a Quick Scenario to Evaluate CBA + On-Court Impact"
                     : tradeResult?.is_legal
-                    ? "TRADE IS SUCCESSFUL & CBA COMPLIANT"
-                    : "TRADE FAILS CBA RESTRICTIONS"}
+                    ? "TRADE IS SUCCESSFUL & 2023 CBA COMPLIANT"
+                    : "TRADE FAILS 2023 CBA SALARY / APRON RESTRICTIONS"}
                 </h3>
                 {tradeResult?.reasons && tradeResult.reasons.length > 0 && (
                   <ul className="text-xs list-disc list-inside mt-1 space-y-0.5 text-red-300 font-mono">
@@ -174,18 +217,59 @@ export default function CBAPage() {
                 {tradeResult?.is_legal &&
                   (teamASendPlayers.length > 0 || teamBSendPlayers.length > 0) && (
                     <p className="text-xs text-emerald-300 font-mono mt-0.5">
-                      Both franchises meet 2023 CBA salary-matching bands and apron limits.
+                      Both franchises meet 2023 CBA salary-matching bands and First/Second Apron limits.
                     </p>
                   )}
               </div>
             </div>
 
-            <button
-              onClick={clearTrade}
-              className="px-4 py-1.5 bg-surface hover:bg-surfaceCard border border-borderDark rounded-xl text-xs font-mono font-bold text-gray-300 hover:text-white transition"
-            >
-              Reset Proposal
-            </button>
+            {/* On-Court RAPM & Projected Wins Added Delta */}
+            {(teamASendPlayers.length > 0 || teamBSendPlayers.length > 0) && tradeResult && (
+              <div className="grid grid-cols-2 gap-3 font-mono text-xs shrink-0">
+                <div className="p-3 rounded-xl bg-surface/90 border border-borderDark text-center">
+                  <span className="text-[10px] text-gray-400 uppercase block">
+                    {teamA?.team_abbreviation} On-Court Delta
+                  </span>
+                  <span
+                    className={`font-extrabold text-sm ${
+                      (tradeResult.teamA_wins_delta ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                    }`}
+                  >
+                    {(tradeResult.teamA_wins_delta ?? 0) >= 0
+                      ? `+${tradeResult.teamA_wins_delta?.toFixed(1)}`
+                      : tradeResult.teamA_wins_delta?.toFixed(1)}{" "}
+                    Wins
+                  </span>
+                  <span className="text-[10px] text-gray-400 block">
+                    RAPM:{" "}
+                    {(tradeResult.teamA_rapm_delta ?? 0) >= 0
+                      ? `+${tradeResult.teamA_rapm_delta?.toFixed(2)}`
+                      : tradeResult.teamA_rapm_delta?.toFixed(2)}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-surface/90 border border-borderDark text-center">
+                  <span className="text-[10px] text-gray-400 uppercase block">
+                    {teamB?.team_abbreviation} On-Court Delta
+                  </span>
+                  <span
+                    className={`font-extrabold text-sm ${
+                      (tradeResult.teamB_wins_delta ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                    }`}
+                  >
+                    {(tradeResult.teamB_wins_delta ?? 0) >= 0
+                      ? `+${tradeResult.teamB_wins_delta?.toFixed(1)}`
+                      : tradeResult.teamB_wins_delta?.toFixed(1)}{" "}
+                    Wins
+                  </span>
+                  <span className="text-[10px] text-gray-400 block">
+                    RAPM:{" "}
+                    {(tradeResult.teamB_rapm_delta ?? 0) >= 0
+                      ? `+${tradeResult.teamB_rapm_delta?.toFixed(2)}`
+                      : tradeResult.teamB_rapm_delta?.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Trade Machine Stages (Team A & Team B) */}
@@ -261,7 +345,7 @@ export default function CBAPage() {
                               : "bg-surface border-borderDark hover:border-gray-600 text-gray-300"
                           }`}
                         >
-                          <div className="truncate">
+                          <div className="truncate pr-2">
                             <span className="font-bold block truncate">
                               {c.player_name}{" "}
                               {c.no_trade_clause ? (
@@ -269,10 +353,12 @@ export default function CBAPage() {
                               ) : null}
                             </span>
                             <span className="text-[10px] text-gray-400">
-                              {c.contract_type} • {c.total_years}yr / {fmtM(c.total_value || c.cap_hit)}
+                              {c.contract_type} • {c.pts ?? 0} PPG • RAPM{" "}
+                              {(c.rapm ?? 0) >= 0 ? `+${(c.rapm ?? 0).toFixed(1)}` : (c.rapm ?? 0).toFixed(1)} •{" "}
+                              {(c.wins_added ?? 0).toFixed(1)} Wins
                             </span>
                           </div>
-                          <span className="font-bold text-sm text-accent">
+                          <span className="font-bold text-sm text-accent shrink-0">
                             {fmtM(c.cap_hit || c.current_salary)}
                           </span>
                         </div>
@@ -372,7 +458,7 @@ export default function CBAPage() {
                               : "bg-surface border-borderDark hover:border-gray-600 text-gray-300"
                           }`}
                         >
-                          <div className="truncate">
+                          <div className="truncate pr-2">
                             <span className="font-bold block truncate">
                               {c.player_name}{" "}
                               {c.no_trade_clause ? (
@@ -380,10 +466,12 @@ export default function CBAPage() {
                               ) : null}
                             </span>
                             <span className="text-[10px] text-gray-400">
-                              {c.contract_type} • {c.total_years}yr / {fmtM(c.total_value || c.cap_hit)}
+                              {c.contract_type} • {c.pts ?? 0} PPG • RAPM{" "}
+                              {(c.rapm ?? 0) >= 0 ? `+${(c.rapm ?? 0).toFixed(1)}` : (c.rapm ?? 0).toFixed(1)} •{" "}
+                              {(c.wins_added ?? 0).toFixed(1)} Wins
                             </span>
                           </div>
-                          <span className="font-bold text-sm text-cyan-400">
+                          <span className="font-bold text-sm text-cyan-400 shrink-0">
                             {fmtM(c.cap_hit || c.current_salary)}
                           </span>
                         </div>
@@ -422,7 +510,7 @@ export default function CBAPage() {
                 <span>📜</span> Complete 450-Player Active Contracts &amp; Multi-Year Cap Schedules
               </h3>
               <p className="text-xs text-gray-400 font-mono mt-0.5">
-                Every active NBA player contract with multi-year cap hits (2023-24 through 2028-29), Bird Rights, and option flags.
+                Every active NBA player contract with multi-year cap hits (2023-24 through 2028-29), on-court RAPM, and Bird Rights.
               </p>
             </div>
 
@@ -458,7 +546,7 @@ export default function CBAPage() {
                   <th className="py-3 px-3">Team</th>
                   <th className="py-3 px-3">Type / Signed Using</th>
                   <th className="py-3 px-3 text-right">Current Cap Hit</th>
-                  <th className="py-3 px-3 text-right">Total Value</th>
+                  <th className="py-3 px-3 text-right">RAPM / Wins</th>
                   <th className="py-3 px-3">Multi-Year Cap Schedule</th>
                 </tr>
               </thead>
@@ -485,8 +573,11 @@ export default function CBAPage() {
                     <td className="py-2.5 px-3 text-right font-bold text-emerald-400">
                       {fmtM(c.cap_hit || c.current_salary)}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-gray-200">
-                      {c.total_years}yr / {fmtM(c.total_value || c.cap_hit)}
+                    <td className="py-2.5 px-3 text-right">
+                      <span className={(c.rapm ?? 0) >= 0 ? "text-cyan-300 font-bold" : "text-red-400"}>
+                        {(c.rapm ?? 0) >= 0 ? `+${(c.rapm ?? 0).toFixed(1)}` : (c.rapm ?? 0).toFixed(1)}
+                      </span>{" "}
+                      / <span className="text-amber-300 font-bold">{(c.wins_added ?? 0).toFixed(1)}W</span>
                     </td>
                     <td className="py-2.5 px-3">
                       <div className="flex flex-wrap gap-1">

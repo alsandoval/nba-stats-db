@@ -74,6 +74,21 @@ function ensureBrightOnDark(hex: string, fallback: string): string {
   return `#${toHex(boost(r))}${toHex(boost(g))}${toHex(boost(b))}`;
 }
 
+export function getTeamPalette(tricode: string): {
+  primary: string;
+  secondary: string;
+  name: string;
+} {
+  const tri = (tricode || "").toUpperCase();
+  return (
+    NBA_TEAM_PALETTE[tri] || {
+      primary: "#3B82F6",
+      secondary: "#38BDF8",
+      name: tri || "NBA",
+    }
+  );
+}
+
 export function resolveMatchupTeamColors(
   homeTricode: string,
   awayTricode: string,

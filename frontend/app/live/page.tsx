@@ -7,7 +7,11 @@ import {
   LiveScoreboard,
   LivePlayerStat,
 } from "@/lib/data-service";
-import { DifferentialCandlestickChart } from "@/components/differential-candlestick-chart";
+import {
+  DifferentialCandlestickChart,
+  resolveMatchupTeamColors,
+} from "@/components/differential-candlestick-chart";
+import { CourtSVG } from "@/components/court-svg";
 
 export default function LiveGameCompanionPage() {
   const [scoreboard, setScoreboard] = useState<LiveScoreboard | null>(null);
@@ -23,7 +27,7 @@ export default function LiveGameCompanionPage() {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(2); // 1x, 2x, 5x, 10x
   const [currentMinute, setCurrentMinute] = useState<number>(48);
   const [pbpFilter, setPbpFilter] = useState<"all" | "scoring" | "clutch" | "shots">("all");
-  const [leftTab, setLeftTab] = useState<"floor" | "boxscore">("floor");
+  const [leftTab, setLeftTab] = useState<"floor" | "boxscore" | "shotmap">("floor");
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pbpScrollRef = useRef<HTMLDivElement | null>(null);
@@ -222,6 +226,50 @@ export default function LiveGameCompanionPage() {
     setIsPlaying(true);
   };
 
+  // Top 5 Game-Changing Win Probability Swings (WPA)
+  const topWpaSwings = useMemo(() => {
+    if (!gameFeed || !gameFeed.playByPlay) return [];
+    return [...gameFeed.playByPlay]
+      .filter((p) => Math.abs(p.wpa || 0) >= 0.03)
+      .sort((a, b) => Math.abs(b.wpa || 0) - Math.abs(a.wpa || 0))
+      .slice(0, 5);
+  }, [gameFeed]);
+
+  // Synthesize live spatial court coordinates for all field goal attempts up to currentMinute
+  const liveCourtShots = useMemo(() => {
+    if (!activePlays.length) return [];
+    const shotEvents = activePlays.filter(
+      (p) => p.shotResult === "Made" || p.shotResult === "Missed"
+    );
+    return shotEvents.map((ev, i) => {
+      const dist = ev.shotDistance ?? (ev.actionType === "3pt" ? 25 : 8);
+      const seed = (ev.actionNumber * 9301 + 49297) % 233280;
+      const frac = seed / 233280.0;
+      const angle = Math.PI * (0.12 + frac * 0.76);
+      const x = Number((dist * Math.cos(angle)).toFixed(1));
+      const y = Number(Math.max(1.5, dist * Math.sin(angle)).toFixed(1));
+      return {
+        x,
+        y,
+        dist,
+        made: ev.shotResult === "Made" ? 1 : 0,
+        is_3pt: ev.actionType === "3pt" ? 1 : 0,
+        p_hat: ev.xeFG || 0.5,
+      };
+    });
+  }, [activePlays]);
+
+  const resolvedColors = useMemo(
+    () =>
+      resolveMatchupTeamColors(
+        gameFeed?.homeTeam.tricode || "BOS",
+        gameFeed?.awayTeam.tricode || "LAL",
+        gameFeed?.homeTeam.color,
+        gameFeed?.awayTeam.color
+      ),
+    [gameFeed]
+  );
+
   if ((loadingScoreboard && !scoreboard) || (!gameFeed && loadingGame)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-white">
@@ -360,7 +408,7 @@ export default function LiveGameCompanionPage() {
             <div className="md:col-span-4 flex items-center gap-4">
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg border border-white/10 overflow-hidden shrink-0"
-                style={{ backgroundColor: awayTeam.color }}
+                style={{ backgroundColor: resolvedColors.awayColor }}
               >
                 {awayTeam.logo ? (
                   <img src={awayTeam.logo} alt={awayTeam.tricode} className="w-11 h-11 object-contain" />
@@ -420,13 +468,21 @@ export default function LiveGameCompanionPage() {
               {/* Live Margin & Win Probability Badges */}
               <div className="flex items-center gap-2 mt-2 font-mono text-xs">
                 <span
-                  className={`px-2 py-0.5 rounded font-bold ${
-                    currentMargin > 0
-                      ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-                      : currentMargin < 0
-                      ? "bg-red-950 text-red-300 border border-red-800"
-                      : "bg-surfaceCard text-gray-300 border border-borderDark"
-                  }`}
+                  className="px-2 py-0.5 rounded font-bold text-white border"
+                  style={{
+                    backgroundColor:
+                      currentMargin > 0
+                        ? `${resolvedColors.homeColor}33`
+                        : currentMargin < 0
+                        ? `${resolvedColors.awayColor}33`
+                        : "#1f2937",
+                    borderColor:
+                      currentMargin > 0
+                        ? resolvedColors.homeColor
+                        : currentMargin < 0
+                        ? resolvedColors.awayColor
+                        : "#374151",
+                  }}
                 >
                   {currentMargin > 0
                     ? `+${currentMargin} ${homeTeam.tricode}`
@@ -435,8 +491,20 @@ export default function LiveGameCompanionPage() {
                     : "TIED"}
                 </span>
 
-                <span className="bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded font-bold">
-                  {(currentWinProb * 100).toFixed(1)}% {homeTeam.tricode} WP
+                <span
+                  className="px-2 py-0.5 rounded font-bold text-white border"
+                  style={{
+                    backgroundColor:
+                      currentWinProb >= 0.5
+                        ? `${resolvedColors.homeColor}33`
+                        : `${resolvedColors.awayColor}33`,
+                    borderColor:
+                      currentWinProb >= 0.5 ? resolvedColors.homeColor : resolvedColors.awayColor,
+                  }}
+                >
+                  {currentWinProb >= 0.5
+                    ? `${(currentWinProb * 100).toFixed(1)}% ${homeTeam.tricode} WP`
+                    : `${((1 - currentWinProb) * 100).toFixed(1)}% ${awayTeam.tricode} WP`}
                 </span>
               </div>
             </div>
@@ -462,7 +530,7 @@ export default function LiveGameCompanionPage() {
               </div>
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg border border-white/10 overflow-hidden shrink-0 md:order-3"
-                style={{ backgroundColor: homeTeam.color }}
+                style={{ backgroundColor: resolvedColors.homeColor }}
               >
                 {homeTeam.logo ? (
                   <img src={homeTeam.logo} alt={homeTeam.tricode} className="w-11 h-11 object-contain" />
@@ -479,13 +547,13 @@ export default function LiveGameCompanionPage() {
               <span className="text-gray-400 font-bold">Linescore:</span>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-gray-300">
-                  <strong className="text-white">{awayTeam.tricode}:</strong>{" "}
+                  <strong style={{ color: resolvedColors.awayColor }}>{awayTeam.tricode}:</strong>{" "}
                   {awayTeam.periods.map((p) => p.score).join(" | ")} ={" "}
                   <strong className="text-white">{awayTeam.score}</strong>
                 </span>
                 <span className="text-gray-500">vs</span>
                 <span className="text-gray-300">
-                  <strong className="text-white">{homeTeam.tricode}:</strong>{" "}
+                  <strong style={{ color: resolvedColors.homeColor }}>{homeTeam.tricode}:</strong>{" "}
                   {homeTeam.periods.map((p) => p.score).join(" | ")} ={" "}
                   <strong className="text-white">{homeTeam.score}</strong>
                 </span>
@@ -594,11 +662,41 @@ export default function LiveGameCompanionPage() {
           homeColor={homeTeam.color}
           awayColor={awayTeam.color}
         />
+
+        {/* NEW: TOP 5 DECISIVE WIN PROBABILITY SWING ALERTS (CLICK TO JUMP) */}
+        {topWpaSwings.length > 0 && (
+          <div className="mt-3 bg-surfaceCard border border-borderDark rounded-xl p-3 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-mono uppercase text-amber-400 font-extrabold whitespace-nowrap mr-1">
+              ⚡ Key Momentum Swings (Click to Jump):
+            </span>
+            {topWpaSwings.map((sw, idx) => {
+              const isHomeSwing = (sw.wpa || 0) > 0;
+              const swColor = isHomeSwing ? resolvedColors.homeColor : resolvedColors.awayColor;
+              return (
+                <button
+                  key={`wpa-swing-${idx}`}
+                  onClick={() => setCurrentMinute(sw.minute)}
+                  style={{ borderColor: `${swColor}66` }}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surfaceCard border text-[11px] font-mono text-left transition flex items-center gap-2 max-w-xs truncate"
+                  title={sw.description}
+                >
+                  <span
+                    className="font-extrabold px-1.5 py-0.2 rounded text-[10px] text-white"
+                    style={{ backgroundColor: swColor }}
+                  >
+                    m{sw.minute} ({sw.wpa > 0 ? `+${(sw.wpa * 100).toFixed(1)}%` : `${(sw.wpa * 100).toFixed(1)}%`} WP)
+                  </span>
+                  <span className="text-gray-300 truncate">{sw.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {/* 5. SPLIT VIEW: ON-COURT LINEUPS / FULL BOXSCORE & LIVE QUANT PLAY-BY-PLAY */}
+      {/* 5. SPLIT VIEW: ON-COURT LINEUPS / FULL BOXSCORE / LIVE SHOT MAP & LIVE QUANT PLAY-BY-PLAY */}
       <section className="max-w-7xl mx-auto w-full px-4 pt-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN: ACTIVE 10 PLAYERS OR FULL BOXSCORE (5 cols) */}
+        {/* LEFT COLUMN: ACTIVE 10 PLAYERS, BOXSCORE OR LIVE SHOT MAP (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           <div className="bg-surfaceCard border border-borderDark rounded-xl p-4 shadow-card">
             <div className="flex items-center justify-between border-b border-borderDark/60 pb-2.5 mb-3">
@@ -609,7 +707,7 @@ export default function LiveGameCompanionPage() {
                     leftTab === "floor" ? "bg-accent text-white font-bold" : "text-gray-400 hover:text-white"
                   }`}
                 >
-                  🛡️ On-Court 10 (m{currentMinute})
+                  🛡️ On-Court 10
                 </button>
                 <button
                   onClick={() => setLeftTab("boxscore")}
@@ -617,11 +715,19 @@ export default function LiveGameCompanionPage() {
                     leftTab === "boxscore" ? "bg-accent text-white font-bold" : "text-gray-400 hover:text-white"
                   }`}
                 >
-                  📋 Full Boxscore
+                  📋 Boxscore
+                </button>
+                <button
+                  onClick={() => setLeftTab("shotmap")}
+                  className={`px-2.5 py-1 rounded transition ${
+                    leftTab === "shotmap" ? "bg-accent text-white font-bold" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  🎯 Live Shot Map
                 </button>
               </div>
               <span className="text-[11px] font-mono text-gray-400">
-                {homeTeam.players.length + awayTeam.players.length} Active
+                m{currentMinute}
               </span>
             </div>
 
@@ -631,10 +737,10 @@ export default function LiveGameCompanionPage() {
                 <div className="mb-4">
                   <div className="flex items-center justify-between text-xs font-bold text-gray-300 mb-2">
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: homeTeam.color }} />
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: resolvedColors.homeColor }} />
                       {homeTeam.name} On Floor ({homeTeam.tricode})
                     </span>
-                    <span className="font-mono text-emerald-400">
+                    <span className="font-mono" style={{ color: resolvedColors.homeColor }}>
                       {currentMargin >= 0 ? `Lead: +${currentMargin}` : `Deficit: ${currentMargin}`}
                     </span>
                   </div>
@@ -667,10 +773,10 @@ export default function LiveGameCompanionPage() {
                 <div>
                   <div className="flex items-center justify-between text-xs font-bold text-gray-300 mb-2">
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: awayTeam.color }} />
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: resolvedColors.awayColor }} />
                       {awayTeam.name} On Floor ({awayTeam.tricode})
                     </span>
-                    <span className="font-mono text-red-400">
+                    <span className="font-mono" style={{ color: resolvedColors.awayColor }}>
                       {currentMargin <= 0 ? `Lead: +${Math.abs(currentMargin)}` : `Deficit: -${currentMargin}`}
                     </span>
                   </div>
@@ -699,7 +805,7 @@ export default function LiveGameCompanionPage() {
                   </div>
                 </div>
               </>
-            ) : (
+            ) : leftTab === "boxscore" ? (
               /* Full Team Boxscores View */
               <div className="max-h-[430px] overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-borderDark">
                 {[awayTeam, homeTeam].map((tm) => (
@@ -746,6 +852,17 @@ export default function LiveGameCompanionPage() {
                     </table>
                   </div>
                 ))}
+              </div>
+            ) : (
+              /* Live Shot Map View */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs font-mono text-gray-400">
+                  <span>Shots through Minute {currentMinute}: <strong className="text-white">{liveCourtShots.length} FGA</strong></span>
+                  <span>Made: <strong className="text-emerald-400">{liveCourtShots.filter((s) => s.made === 1).length}</strong></span>
+                </div>
+                <div className="w-full aspect-[50/47] rounded-xl overflow-hidden bg-surface border border-borderDark p-2">
+                  <CourtSVG shots={liveCourtShots} />
+                </div>
               </div>
             )}
           </div>
