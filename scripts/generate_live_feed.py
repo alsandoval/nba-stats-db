@@ -219,6 +219,12 @@ def generate_live_game_feed():
             low_val = min([open_val] + margins)
             close_val = m_events[-1]["scoreMargin"]
 
+            wp_open = last_wp
+            wps = [e["homeWinProb"] for e in m_events]
+            wp_high = round(max([wp_open] + wps), 4)
+            wp_low = round(min([wp_open] + wps), 4)
+            wp_close = round(m_events[-1]["homeWinProb"], 4)
+
             # Points scored in this minute
             start_h = m_events[0]["scoreHome"]
             end_h = m_events[-1]["scoreHome"]
@@ -228,12 +234,16 @@ def generate_live_game_feed():
             # Key play (largest absolute WPA in minute)
             key_ev = max(m_events, key=lambda x: abs(x.get("wpa") or 0.0))
             key_desc = key_ev.get("description", "")
-            minute_wp = m_events[-1]["homeWinProb"]
+            minute_wp = wp_close
         else:
             open_val = last_close
             high_val = last_close
             low_val = last_close
             close_val = last_close
+            wp_open = round(last_wp, 4)
+            wp_high = round(last_wp, 4)
+            wp_low = round(last_wp, 4)
+            wp_close = round(last_wp, 4)
             start_h = end_h = 0
             start_a = end_a = 0
             key_desc = "Scoreless stint / possession grind"
@@ -262,7 +272,7 @@ def generate_live_game_feed():
                     a_pts_scored += pts
 
         vol = h_pts_scored + a_pts_scored
-        is_bullish = close_val >= open_val
+        is_bullish = wp_close > wp_open if wp_close != wp_open else (close_val >= open_val)
 
         # Momentum tag
         if h_pts_scored >= 6 and a_pts_scored == 0:
@@ -276,9 +286,9 @@ def generate_live_game_feed():
         elif vol == 0:
             momentum = "Defensive Lockdown"
         elif is_bullish:
-            momentum = "IND Surge"
+            momentum = "IND Win Prob Surge"
         else:
-            momentum = "CLE Rally"
+            momentum = "CLE Win Prob Surge"
 
         candle = {
             "minute": m,
@@ -289,10 +299,17 @@ def generate_live_game_feed():
             "high": high_val,
             "low": low_val,
             "close": close_val,
+            "wpOpen": wp_open,
+            "wpHigh": wp_high,
+            "wpLow": wp_low,
+            "wpClose": wp_close,
+            "awayWpOpen": round(1.0 - wp_open, 4),
+            "awayWpClose": round(1.0 - wp_close, 4),
             "volume": vol,
             "homePoints": h_pts_scored,
             "awayPoints": a_pts_scored,
             "homeWinProb": minute_wp,
+            "awayWinProb": round(1.0 - minute_wp, 4),
             "isBullish": is_bullish,
             "keyPlay": key_desc,
             "momentum": momentum,

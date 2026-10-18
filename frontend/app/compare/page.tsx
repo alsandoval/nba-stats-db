@@ -1,37 +1,81 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { DataService, Player } from "@/lib/data-service";
+import React, { useEffect, useState, useMemo } from "react";
+import { DataService, Player, SEASONS_10YR } from "@/lib/data-service";
 import { PercentileBadge } from "@/components/virtual-table";
 
 const PRESETS = [
-  { name: "Jokic vs Doncic", idA: 203999, idB: 1629029 },
-  { name: "Curry vs LeBron", idA: 201939, idB: 2544 },
-  { name: "Tatum vs Edwards", idA: 1628369, idB: 1630162 },
-  { name: "Giannis vs SGA", idA: 203507, idB: 1628983 },
+  { name: "'24 Jokic vs '24 Luka", seasonA: "2023-24", idA: 203999, seasonB: "2023-24", idB: 1629029 },
+  { name: "'16 Curry vs '24 Jokic", seasonA: "2015-16", idA: 201939, seasonB: "2023-24", idB: 203999 },
+  { name: "'16 LeBron vs '24 Tatum", seasonA: "2015-16", idA: 2544, seasonB: "2023-24", idB: 1628369 },
+  { name: "'24 Giannis vs '24 SGA", seasonA: "2023-24", idA: 203507, seasonB: "2023-24", idB: 1628983 },
 ];
 
 export default function ComparePage() {
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [seasonA, setSeasonA] = useState<string>("2023-24");
+  const [seasonB, setSeasonB] = useState<string>("2023-24");
+  const [playersA, setPlayersA] = useState<Player[]>([]);
+  const [playersB, setPlayersB] = useState<Player[]>([]);
+  const [searchA, setSearchA] = useState<string>("");
+  const [searchB, setSearchB] = useState<string>("");
   const [playerAId, setPlayerAId] = useState<number>(203999); // Jokic
   const [playerBId, setPlayerBId] = useState<number>(1629029); // Luka
 
   useEffect(() => {
-    DataService.getPlayers().then(setPlayers);
-  }, []);
+    DataService.getPlayers(seasonA).then(setPlayersA);
+  }, [seasonA]);
 
-  const playerA = players.find((p) => p.player_id === playerAId) || players[0];
-  const playerB = players.find((p) => p.player_id === playerBId) || players[1];
+  useEffect(() => {
+    DataService.getPlayers(seasonB).then(setPlayersB);
+  }, [seasonB]);
 
-  const renderComparisonBar = (label: string, valA: number, valB: number, isPct: boolean = false) => {
-    const higherIsBetter = true;
-    const isAWinner = higherIsBetter ? valA > valB : valA < valB;
-    const isBWinner = higherIsBetter ? valB > valA : valB < valA;
+  const filteredA = useMemo(() => {
+    if (!searchA) return playersA;
+    const q = searchA.toLowerCase();
+    return playersA.filter(
+      (p) =>
+        p.full_name.toLowerCase().includes(q) ||
+        p.team_abbreviation.toLowerCase().includes(q)
+    );
+  }, [playersA, searchA]);
+
+  const filteredB = useMemo(() => {
+    if (!searchB) return playersB;
+    const q = searchB.toLowerCase();
+    return playersB.filter(
+      (p) =>
+        p.full_name.toLowerCase().includes(q) ||
+        p.team_abbreviation.toLowerCase().includes(q)
+    );
+  }, [playersB, searchB]);
+
+  const playerA = playersA.find((p) => p.player_id === playerAId) || filteredA[0] || playersA[0];
+  const playerB = playersB.find((p) => p.player_id === playerBId) || filteredB[0] || playersB[1];
+
+  const shotA = useMemo(
+    () => (playerA ? DataService.getShotProfile(playerA.player_id) : null),
+    [playerA]
+  );
+  const shotB = useMemo(
+    () => (playerB ? DataService.getShotProfile(playerB.player_id) : null),
+    [playerB]
+  );
+
+  const renderComparisonBar = (
+    label: string,
+    valA: number,
+    valB: number,
+    isPct: boolean = false,
+    decimals: number = 1
+  ) => {
+    const isAWinner = valA > valB;
+    const isBWinner = valB > valA;
     const maxVal = Math.max(Math.abs(valA), Math.abs(valB), 0.01) * 1.15;
     const widthA = Math.min(100, Math.max(8, (Math.abs(valA) / maxVal) * 100));
     const widthB = Math.min(100, Math.max(8, (Math.abs(valB) / maxVal) * 100));
 
-    const fmt = (v: number) => (isPct ? `${(v * 100).toFixed(1)}%` : v.toFixed(1));
+    const fmt = (v: number) =>
+      isPct ? `${(v * 100).toFixed(decimals)}%` : v.toFixed(decimals);
 
     return (
       <div className="space-y-1.5 py-2.5 border-b border-borderDark/40">
@@ -39,13 +83,14 @@ export default function ComparePage() {
           <span className={`font-bold ${isAWinner ? "text-emerald-400" : "text-gray-300"}`}>
             {fmt(valA)}
           </span>
-          <span className="text-gray-400 font-bold uppercase text-[11px] tracking-wider">{label}</span>
+          <span className="text-gray-400 font-bold uppercase text-[11px] tracking-wider">
+            {label}
+          </span>
           <span className={`font-bold ${isBWinner ? "text-emerald-400" : "text-gray-300"}`}>
             {fmt(valB)}
           </span>
         </div>
 
-        {/* Dual Bar Graphic */}
         <div className="grid grid-cols-2 gap-3 h-2.5">
           <div className="flex justify-end bg-surface rounded-full overflow-hidden">
             <div
@@ -74,21 +119,23 @@ export default function ComparePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>👥</span> Head-to-Head Player Comparison
+            <span>👥</span> 10-Season Cross-Era Player Comparison Studio
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            Side-by-side analytical radar comparing per-game production, shooting efficiency, and RAPM impact.
+            Compare any two player-seasons from 2015-16 through 2024-25 across RAPM, LEBRON, Archetypes &amp; Zone Shooting.
           </p>
         </div>
 
         {/* Presets */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-mono text-gray-400 mr-1">Rivalries:</span>
+          <span className="text-xs font-mono text-gray-400 mr-1">Marquee Matchups:</span>
           {PRESETS.map((pr) => (
             <button
               key={pr.name}
               onClick={() => {
+                setSeasonA(pr.seasonA);
                 setPlayerAId(pr.idA);
+                setSeasonB(pr.seasonB);
                 setPlayerBId(pr.idB);
               }}
               className="px-3 py-1 bg-surfaceCard hover:bg-surface border border-borderDark rounded-lg text-xs font-semibold text-gray-300 hover:text-white transition"
@@ -102,46 +149,78 @@ export default function ComparePage() {
       {/* Selectors Bar */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Player A Selector */}
-        <div className="p-4 bg-surfaceCard border border-borderDark rounded-2xl shadow-lg space-y-3">
+        <div className="p-5 bg-surfaceCard border border-borderDark rounded-2xl shadow-lg space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-accent font-bold">Player A</span>
-            {playerA && (
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface border border-borderDark text-gray-300">
-                {playerA.team_abbreviation}
-              </span>
-            )}
+            <span className="text-xs font-mono uppercase text-accent font-extrabold">
+              Player A ({playersA.length} in {seasonA})
+            </span>
+            <select
+              value={seasonA}
+              onChange={(e) => setSeasonA(e.target.value)}
+              className="bg-surface border border-accent/50 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-white"
+            >
+              {SEASONS_10YR.map((s) => (
+                <option key={s} value={s}>
+                  {s} Season
+                </option>
+              ))}
+            </select>
           </div>
+          <input
+            type="text"
+            placeholder="Filter Player A by name or team..."
+            value={searchA}
+            onChange={(e) => setSearchA(e.target.value)}
+            className="w-full bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-xs font-mono text-white placeholder-gray-500"
+          />
           <select
-            value={playerAId}
+            value={playerA?.player_id || playerAId}
             onChange={(e) => setPlayerAId(Number(e.target.value))}
             className="w-full bg-surface border border-borderDark rounded-xl p-2.5 text-sm font-bold text-white focus:outline-none focus:border-accent"
           >
-            {players.map((p) => (
+            {filteredA.map((p) => (
               <option key={p.player_id} value={p.player_id}>
-                {p.full_name} ({p.team_abbreviation} &middot; {p.pts} PPG)
+                {p.full_name} ({p.team_abbreviation} • {p.pts} PPG • RAPM{" "}
+                {p.rapm >= 0 ? `+${p.rapm}` : p.rapm})
               </option>
             ))}
           </select>
         </div>
 
         {/* Player B Selector */}
-        <div className="p-4 bg-surfaceCard border border-borderDark rounded-2xl shadow-lg space-y-3">
+        <div className="p-5 bg-surfaceCard border border-borderDark rounded-2xl shadow-lg space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-cyan-400 font-bold">Player B</span>
-            {playerB && (
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface border border-borderDark text-gray-300">
-                {playerB.team_abbreviation}
-              </span>
-            )}
+            <span className="text-xs font-mono uppercase text-cyan-400 font-extrabold">
+              Player B ({playersB.length} in {seasonB})
+            </span>
+            <select
+              value={seasonB}
+              onChange={(e) => setSeasonB(e.target.value)}
+              className="bg-surface border border-cyan-400/50 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-white"
+            >
+              {SEASONS_10YR.map((s) => (
+                <option key={s} value={s}>
+                  {s} Season
+                </option>
+              ))}
+            </select>
           </div>
+          <input
+            type="text"
+            placeholder="Filter Player B by name or team..."
+            value={searchB}
+            onChange={(e) => setSearchB(e.target.value)}
+            className="w-full bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-xs font-mono text-white placeholder-gray-500"
+          />
           <select
-            value={playerBId}
+            value={playerB?.player_id || playerBId}
             onChange={(e) => setPlayerBId(Number(e.target.value))}
             className="w-full bg-surface border border-borderDark rounded-xl p-2.5 text-sm font-bold text-white focus:outline-none focus:border-cyan-400"
           >
-            {players.map((p) => (
+            {filteredB.map((p) => (
               <option key={p.player_id} value={p.player_id}>
-                {p.full_name} ({p.team_abbreviation} &middot; {p.pts} PPG)
+                {p.full_name} ({p.team_abbreviation} • {p.pts} PPG • RAPM{" "}
+                {p.rapm >= 0 ? `+${p.rapm}` : p.rapm})
               </option>
             ))}
           </select>
@@ -153,19 +232,25 @@ export default function ComparePage() {
         <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-6">
           {/* Top Banner Cards */}
           <div className="grid grid-cols-2 gap-6 text-center border-b border-borderDark pb-6">
-            <div className="space-y-1">
-              <span className="text-4xl block">🌟</span>
+            <div className="space-y-1.5">
+              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/40 font-bold">
+                {seasonA} • {playerA.team_abbreviation}
+              </span>
               <h3 className="text-xl font-extrabold text-white">{playerA.full_name}</h3>
-              <p className="text-xs font-mono text-accent">
-                {playerA.team_abbreviation} &middot; {playerA.gp} GP &middot; {playerA.min_per_game} MPG
+              <p className="text-xs font-mono text-gray-400">
+                {playerA.gp} GP &middot; {playerA.min_per_game} MPG &middot;{" "}
+                {playerA.offensive_archetype}
               </p>
             </div>
 
-            <div className="space-y-1">
-              <span className="text-4xl block">⚡</span>
+            <div className="space-y-1.5">
+              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-400 border border-cyan-400/40 font-bold">
+                {seasonB} • {playerB.team_abbreviation}
+              </span>
               <h3 className="text-xl font-extrabold text-white">{playerB.full_name}</h3>
-              <p className="text-xs font-mono text-cyan-400">
-                {playerB.team_abbreviation} &middot; {playerB.gp} GP &middot; {playerB.min_per_game} MPG
+              <p className="text-xs font-mono text-gray-400">
+                {playerB.gp} GP &middot; {playerB.min_per_game} MPG &middot;{" "}
+                {playerB.offensive_archetype}
               </p>
             </div>
           </div>
@@ -178,18 +263,48 @@ export default function ComparePage() {
             {renderComparisonBar("Steals Per Game", playerA.stl, playerB.stl)}
             {renderComparisonBar("Blocks Per Game", playerA.blk, playerB.blk)}
             {renderComparisonBar("True Shooting (TS%)", playerA.ts_pct, playerB.ts_pct, true)}
+            {renderComparisonBar("Usage Rate (USG%)", playerA.usg_pct || 20, playerB.usg_pct || 20)}
             {renderComparisonBar("Field Goal %", playerA.fg_pct, playerB.fg_pct, true)}
             {renderComparisonBar("3-Point %", playerA.fg3_pct, playerB.fg3_pct, true)}
             {renderComparisonBar("On-Court Net Rating", playerA.net_rating, playerB.net_rating)}
-            {renderComparisonBar("Offensive RAPM (ORAPM)", playerA.orapm, playerB.orapm)}
-            {renderComparisonBar("Defensive RAPM (DRAPM)", playerA.drapm, playerB.drapm)}
-            {renderComparisonBar("Total RAPM Impact", playerA.rapm, playerB.rapm)}
+            {renderComparisonBar("Offensive RAPM (ORAPM)", playerA.orapm, playerB.orapm, false, 2)}
+            {renderComparisonBar("Defensive RAPM (DRAPM)", playerA.drapm, playerB.drapm, false, 2)}
+            {renderComparisonBar("Total RAPM Impact", playerA.rapm, playerB.rapm, false, 2)}
+            {renderComparisonBar(
+              "Wins Added",
+              playerA.wins_added || 0,
+              playerB.wins_added || 0,
+              false,
+              1
+            )}
+            {shotA?.zones && shotB?.zones && (
+              <>
+                {renderComparisonBar(
+                  "Restricted Area FG%",
+                  shotA.zones["Restricted Area"]?.fg_pct || 0,
+                  shotB.zones["Restricted Area"]?.fg_pct || 0,
+                  true
+                )}
+                {renderComparisonBar(
+                  "Mid-Range FG%",
+                  shotA.zones["Mid-Range"]?.fg_pct || 0,
+                  shotB.zones["Mid-Range"]?.fg_pct || 0,
+                  true
+                )}
+                {renderComparisonBar(
+                  "Above the Break 3 FG%",
+                  shotA.zones["Above the Break 3"]?.fg_pct || 0,
+                  shotB.zones["Above the Break 3"]?.fg_pct || 0,
+                  true
+                )}
+              </>
+            )}
           </div>
 
           {/* Percentile Badges Comparison */}
           <div className="max-w-2xl mx-auto pt-6 border-t border-borderDark space-y-3 font-mono text-xs">
             <h4 className="text-center font-bold text-gray-300 uppercase text-[11px] tracking-wider mb-3">
-              Percentile Rankings (0 - 100)
+              Within-Season Percentile Rankings (0 - 100)
             </h4>
             <div className="flex items-center justify-between">
               <PercentileBadge value={playerA.rapm_percentile} />

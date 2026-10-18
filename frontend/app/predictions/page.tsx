@@ -1,61 +1,97 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { DataService, Team, WinProbResult } from "@/lib/data-service";
+import React, { useEffect, useState, useMemo } from "react";
+import {
+  DataService,
+  Team,
+  WinProbResult,
+  HistoricalGame,
+  SEASONS_10YR,
+} from "@/lib/data-service";
+import { resolveMatchupTeamColors } from "@/components/differential-candlestick-chart";
 
 export default function PredictionsPage() {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [homeSeason, setHomeSeason] = useState<string>("2023-24");
+  const [awaySeason, setAwaySeason] = useState<string>("2023-24");
+  const [homeTeams, setHomeTeams] = useState<Team[]>([]);
+  const [awayTeams, setAwayTeams] = useState<Team[]>([]);
   const [homeTeamId, setHomeTeamId] = useState<number>(1610612738); // BOS
   const [awayTeamId, setAwayTeamId] = useState<number>(1610612743); // DEN
 
   // Live Simulator state
   const [scoreMargin, setScoreMargin] = useState<number>(4);
   const [period, setPeriod] = useState<number>(4);
-  const [clockSeconds, setClockSeconds] = useState<number>(180); // 3:00 remaining
+  const [clockSeconds, setClockSeconds] = useState<number>(180);
   const [possessionHome, setPossessionHome] = useState<number>(1);
   const [winProb, setWinProb] = useState<WinProbResult | null>(null);
 
-  // Marquee timeline
-  const [timeline, setTimeline] = useState<any[]>([]);
+  // 10-Season Historical Games Archive state
+  const [archiveSeason, setArchiveSeason] = useState<string>("2024-25");
+  const [archiveTeam, setArchiveTeam] = useState<string>("ALL");
+  const [archiveType, setArchiveType] = useState<string>("ALL");
+  const [archiveSearch, setArchiveSearch] = useState<string>("");
+  const [historicalGames, setHistoricalGames] = useState<HistoricalGame[]>([]);
 
   useEffect(() => {
-    DataService.getTeams().then(setTeams);
-    const marquee = DataService.getMarqueeTimeline();
-    if (marquee && marquee.timeline) {
-      setTimeline(marquee.timeline);
-    }
-  }, []);
+    DataService.getTeams(homeSeason).then(setHomeTeams);
+  }, [homeSeason]);
 
-  // Update live simulation on slider changes
   useEffect(() => {
-    // Total seconds remaining calculation
+    DataService.getTeams(awaySeason).then(setAwayTeams);
+  }, [awaySeason]);
+
+  useEffect(() => {
+    DataService.getHistoricalGames(archiveSeason, archiveTeam, archiveSearch).then(
+      (games) => {
+        if (archiveType !== "ALL") {
+          setHistoricalGames(games.filter((g) => g.type === archiveType));
+        } else {
+          setHistoricalGames(games);
+        }
+      }
+    );
+  }, [archiveSeason, archiveTeam, archiveType, archiveSearch]);
+
+  useEffect(() => {
     let totalSec = clockSeconds;
     if (period === 1) totalSec += 2160;
     else if (period === 2) totalSec += 1440;
     else if (period === 3) totalSec += 720;
 
-    const res = DataService.calculateWinProbability(scoreMargin, totalSec, period, possessionHome);
+    const res = DataService.calculateWinProbability(
+      scoreMargin,
+      totalSec,
+      period,
+      possessionHome
+    );
     setWinProb(res);
   }, [scoreMargin, period, clockSeconds, possessionHome]);
 
-  const homeTeam = teams.find((t) => t.team_id === homeTeamId) || teams[0];
-  const awayTeam = teams.find((t) => t.team_id === awayTeamId) || teams[1];
+  const homeTeam = homeTeams.find((t) => t.team_id === homeTeamId) || homeTeams[0];
+  const awayTeam = awayTeams.find((t) => t.team_id === awayTeamId) || awayTeams[1];
+
+  const { homeColor, awayColor } = useMemo(
+    () =>
+      resolveMatchupTeamColors(
+        homeTeam?.abbreviation || "BOS",
+        awayTeam?.abbreviation || "DEN"
+      ),
+    [homeTeam, awayTeam]
+  );
 
   // Head to head matchup projection calculation
-  const calcMatchup = () => {
+  const matchup = useMemo(() => {
     if (!homeTeam || !awayTeam) return null;
-    const hca = 2.5; // Home court advantage
     const estPace = (homeTeam.pace + awayTeam.pace) / 2.0;
 
-    // Expected efficiency
-    const homeExpOff = (homeTeam.off_rating + awayTeam.def_rating) / 2.0 + 1.25;
-    const awayExpOff = (awayTeam.off_rating + homeTeam.def_rating) / 2.0 - 1.25;
+    const homeExpOff = (homeTeam.off_rating + awayTeam.def_rating) / 2.0 + 1.35;
+    const awayExpOff = (awayTeam.off_rating + homeTeam.def_rating) / 2.0 - 1.35;
 
     const homeExpPts = Math.round((homeExpOff * estPace) / 100.0);
     const awayExpPts = Math.round((awayExpOff * estPace) / 100.0);
 
     const projectedMargin = homeExpPts - awayExpPts;
-    const homeWinProb = Math.min(0.92, Math.max(0.08, 0.50 + projectedMargin * 0.038));
+    const homeWinProb = Math.min(0.94, Math.max(0.06, 0.5 + projectedMargin * 0.036));
 
     return {
       homeExpPts,
@@ -65,49 +101,104 @@ export default function PredictionsPage() {
       awayWinProb: Number(((1.0 - homeWinProb) * 100).toFixed(1)),
       estPace: Number(estPace.toFixed(1)),
     };
-  };
-
-  const matchup = calcMatchup();
+  }, [homeTeam, awayTeam]);
 
   return (
     <div className="space-y-8">
       {/* Title Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-          <span>🔮</span> Game Outcome Predictor &amp; Win Probability Studio
-        </h1>
-        <p className="text-sm text-gray-400 mt-1 font-mono">
-          Head-to-head match-up simulator calibrated via Net Ratings and continuous Brownian motion volatility models.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
+            <span>🔮</span> Cross-Era Matchup Predictor &amp; 12,729-Game Historical Archive
+          </h1>
+          <p className="text-sm text-gray-400 mt-1 font-mono">
+            Simulate head-to-head matchups across any of the last 10 seasons (2015-16 to 2024-25) and explore all 12,729 historical games.
+          </p>
+        </div>
+
+        {/* Cross-Era Preset Buttons */}
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+          <button
+            onClick={() => {
+              setHomeSeason("2023-24");
+              setHomeTeamId(1610612738); // BOS
+              setAwaySeason("2015-16");
+              setAwayTeamId(1610612744); // GSW 73-9
+            }}
+            className="px-3 py-1.5 rounded-lg bg-surfaceCard hover:bg-surface border border-borderDark text-gray-200 hover:text-white transition"
+          >
+            &apos;24 BOS vs &apos;16 GSW (73-9)
+          </button>
+          <button
+            onClick={() => {
+              setHomeSeason("2022-23");
+              setHomeTeamId(1610612743); // DEN
+              setAwaySeason("2019-20");
+              setAwayTeamId(1610612747); // LAL
+            }}
+            className="px-3 py-1.5 rounded-lg bg-surfaceCard hover:bg-surface border border-borderDark text-gray-200 hover:text-white transition"
+          >
+            &apos;23 DEN vs &apos;20 LAL
+          </button>
+        </div>
       </div>
 
-      {/* Part 1: Head-to-Head Matchup Simulator */}
+      {/* Part 1: Multi-Season Head-to-Head Matchup Simulator */}
       <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-6">
         <div className="flex items-center justify-between border-b border-borderDark pb-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span>⚔️</span> Head-to-Head Game Projection
+            <span>⚔️</span> Multi-Season Head-to-Head Projection (2015-16 to 2024-25)
           </h2>
-          <span className="text-xs font-mono text-gray-400">Regular Season Simulation</span>
+          <span className="text-xs font-mono text-gray-400">
+            Team-Colored Efficiency &amp; Pace Simulation
+          </span>
         </div>
 
-        {/* Team Selectors */}
+        {/* Team & Season Selectors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           {/* Home Team */}
-          <div className="p-4 rounded-xl bg-surface border border-borderDark space-y-3">
-            <span className="text-xs uppercase font-mono text-accent font-bold">🏠 Home Franchise</span>
+          <div
+            className="p-4 rounded-xl bg-surface border space-y-3"
+            style={{ borderColor: `${homeColor}60` }}
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="text-xs uppercase font-mono font-extrabold"
+                style={{ color: homeColor }}
+              >
+                🏠 Home Franchise
+              </span>
+              <select
+                value={homeSeason}
+                onChange={(e) => setHomeSeason(e.target.value)}
+                className="bg-surfaceCard border border-borderDark rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-white"
+              >
+                {SEASONS_10YR.map((s) => (
+                  <option key={s} value={s}>
+                    {s} Season
+                  </option>
+                ))}
+              </select>
+            </div>
             <select
               value={homeTeamId}
               onChange={(e) => setHomeTeamId(Number(e.target.value))}
               className="w-full bg-surfaceCard border border-borderDark rounded-xl p-2.5 text-sm font-bold text-white focus:outline-none focus:border-accent font-mono"
             >
-              {teams.map((t) => (
+              {homeTeams.map((t) => (
                 <option key={t.team_id} value={t.team_id}>
-                  {t.full_name} ({t.wins}-{t.losses})
+                  {homeSeason} {t.full_name} ({t.wins}-{t.losses})
                 </option>
               ))}
             </select>
             {homeTeam && (
-              <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono pt-1">
+              <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono pt-1">
+                <div>
+                  <span className="text-gray-500 block text-[10px]">Record</span>
+                  <span className="font-bold text-white">
+                    {homeTeam.wins}-{homeTeam.losses}
+                  </span>
+                </div>
                 <div>
                   <span className="text-gray-500 block text-[10px]">Net Rtg</span>
                   <span className="font-bold text-white">
@@ -119,29 +210,56 @@ export default function PredictionsPage() {
                   <span className="font-bold text-white">{homeTeam.off_rating}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px]">Pace</span>
-                  <span className="font-bold text-white">{homeTeam.pace}</span>
+                  <span className="text-gray-500 block text-[10px]">DRtg</span>
+                  <span className="font-bold text-white">{homeTeam.def_rating}</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* Away Team */}
-          <div className="p-4 rounded-xl bg-surface border border-borderDark space-y-3">
-            <span className="text-xs uppercase font-mono text-cyan-400 font-bold">✈️ Away Franchise</span>
+          <div
+            className="p-4 rounded-xl bg-surface border space-y-3"
+            style={{ borderColor: `${awayColor}60` }}
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="text-xs uppercase font-mono font-extrabold"
+                style={{ color: awayColor }}
+              >
+                ✈️ Away Franchise
+              </span>
+              <select
+                value={awaySeason}
+                onChange={(e) => setAwaySeason(e.target.value)}
+                className="bg-surfaceCard border border-borderDark rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-white"
+              >
+                {SEASONS_10YR.map((s) => (
+                  <option key={s} value={s}>
+                    {s} Season
+                  </option>
+                ))}
+              </select>
+            </div>
             <select
               value={awayTeamId}
               onChange={(e) => setAwayTeamId(Number(e.target.value))}
               className="w-full bg-surfaceCard border border-borderDark rounded-xl p-2.5 text-sm font-bold text-white focus:outline-none focus:border-accent font-mono"
             >
-              {teams.map((t) => (
+              {awayTeams.map((t) => (
                 <option key={t.team_id} value={t.team_id}>
-                  {t.full_name} ({t.wins}-{t.losses})
+                  {awaySeason} {t.full_name} ({t.wins}-{t.losses})
                 </option>
               ))}
             </select>
             {awayTeam && (
-              <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono pt-1">
+              <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono pt-1">
+                <div>
+                  <span className="text-gray-500 block text-[10px]">Record</span>
+                  <span className="font-bold text-white">
+                    {awayTeam.wins}-{awayTeam.losses}
+                  </span>
+                </div>
                 <div>
                   <span className="text-gray-500 block text-[10px]">Net Rtg</span>
                   <span className="font-bold text-white">
@@ -153,51 +271,67 @@ export default function PredictionsPage() {
                   <span className="font-bold text-white">{awayTeam.off_rating}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px]">Pace</span>
-                  <span className="font-bold text-white">{awayTeam.pace}</span>
+                  <span className="text-gray-500 block text-[10px]">DRtg</span>
+                  <span className="font-bold text-white">{awayTeam.def_rating}</span>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Projected Outcome Card */}
+        {/* Projected Outcome Card in Team Colors */}
         {matchup && (
           <div className="p-6 rounded-2xl bg-gradient-to-r from-surface to-surfaceCard border border-borderDark text-center space-y-4">
-            <div className="flex items-center justify-center gap-6">
+            <div className="flex items-center justify-center gap-8">
               <div className="text-right">
-                <span className="text-xs font-mono text-gray-400 block">{homeTeam?.abbreviation}</span>
-                <span className="text-4xl font-extrabold font-mono text-accent">
+                <span className="text-xs font-mono text-gray-400 block">
+                  {homeSeason} {homeTeam?.abbreviation}
+                </span>
+                <span
+                  className="text-4xl font-extrabold font-mono"
+                  style={{ color: homeColor }}
+                >
                   {matchup.homeExpPts}
                 </span>
               </div>
               <span className="text-xl font-bold text-gray-500">&mdash;</span>
               <div className="text-left">
-                <span className="text-xs font-mono text-gray-400 block">{awayTeam?.abbreviation}</span>
-                <span className="text-4xl font-extrabold font-mono text-cyan-400">
+                <span className="text-xs font-mono text-gray-400 block">
+                  {awaySeason} {awayTeam?.abbreviation}
+                </span>
+                <span
+                  className="text-4xl font-extrabold font-mono"
+                  style={{ color: awayColor }}
+                >
                   {matchup.awayExpPts}
                 </span>
               </div>
             </div>
 
-            {/* Win Probability Bar */}
-            <div className="max-w-md mx-auto space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-mono font-bold">
-                <span className="text-accent">{homeTeam?.abbreviation} {matchup.homeWinProb}%</span>
-                <span className="text-cyan-400">{awayTeam?.abbreviation} {matchup.awayWinProb}%</span>
+            {/* Win Probability Bar in Team Colors */}
+            <div className="max-w-lg mx-auto space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono font-extrabold">
+                <span style={{ color: homeColor }}>
+                  {homeSeason} {homeTeam?.abbreviation} Win Prob: {matchup.homeWinProb}%
+                </span>
+                <span style={{ color: awayColor }}>
+                  {awaySeason} {awayTeam?.abbreviation} Win Prob: {matchup.awayWinProb}%
+                </span>
               </div>
-              <div className="w-full h-3 rounded-full bg-surface border border-borderDark overflow-hidden flex">
+              <div className="w-full h-3.5 rounded-full bg-surface border border-borderDark overflow-hidden flex">
                 <div
-                  className="bg-accent h-full transition-all duration-300"
-                  style={{ width: `${matchup.homeWinProb}%` }}
+                  className="h-full transition-all duration-300"
+                  style={{ width: `${matchup.homeWinProb}%`, backgroundColor: homeColor }}
                 />
                 <div
-                  className="bg-cyan-400 h-full transition-all duration-300"
-                  style={{ width: `${matchup.awayWinProb}%` }}
+                  className="h-full transition-all duration-300"
+                  style={{ width: `${matchup.awayWinProb}%`, backgroundColor: awayColor }}
                 />
               </div>
               <p className="text-[11px] text-gray-400 font-mono mt-1">
-                Projected Pace: {matchup.estPace} possessions &middot; {homeTeam?.abbreviation} favored by {Math.abs(matchup.projectedMargin)} pts
+                Projected Pace: {matchup.estPace} possessions &middot;{" "}
+                {matchup.projectedMargin >= 0 ? homeTeam?.abbreviation : awayTeam?.abbreviation}{" "}
+                favored by {Math.abs(matchup.projectedMargin)} pts
               </p>
             </div>
           </div>
@@ -221,20 +355,20 @@ export default function PredictionsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Controls */}
           <div className="lg:col-span-2 space-y-5">
-            {/* Score Margin Slider */}
             <div className="bg-surface p-4 rounded-xl border border-borderDark">
               <div className="flex items-center justify-between text-xs font-mono mb-2">
                 <span className="text-gray-300 font-bold">Score Margin (Home - Away):</span>
                 <span
-                  className={`text-base font-bold ${
-                    scoreMargin > 0
-                      ? "text-emerald-400"
-                      : scoreMargin < 0
-                      ? "text-red-400"
-                      : "text-gray-400"
-                  }`}
+                  className="text-base font-bold"
+                  style={{
+                    color:
+                      scoreMargin > 0
+                        ? homeColor
+                        : scoreMargin < 0
+                        ? awayColor
+                        : "#94a3b8",
+                  }}
                 >
                   {scoreMargin > 0 ? `+${scoreMargin}` : scoreMargin} pts
                 </span>
@@ -248,17 +382,13 @@ export default function PredictionsPage() {
                 onChange={(e) => setScoreMargin(Number(e.target.value))}
                 className="w-full accent-accent cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] font-mono text-gray-500 mt-1">
-                <span>Away +25</span>
-                <span>Tied (0)</span>
-                <span>Home +25</span>
-              </div>
             </div>
 
-            {/* Period Selector & Clock Slider */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-surface p-4 rounded-xl border border-borderDark">
-                <label className="block text-xs font-mono text-gray-300 font-bold mb-2">Period</label>
+                <label className="block text-xs font-mono text-gray-300 font-bold mb-2">
+                  Period
+                </label>
                 <div className="grid grid-cols-4 gap-1.5 text-xs font-mono">
                   {[1, 2, 3, 4].map((q) => (
                     <button
@@ -293,16 +423,13 @@ export default function PredictionsPage() {
                   onChange={(e) => setClockSeconds(Number(e.target.value))}
                   className="w-full accent-accent cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] font-mono text-gray-500 mt-1">
-                  <span>0:00 (End)</span>
-                  <span>12:00 (Start)</span>
-                </div>
               </div>
             </div>
 
-            {/* Possession Toggle */}
             <div className="bg-surface p-4 rounded-xl border border-borderDark flex items-center justify-between">
-              <span className="text-xs font-mono text-gray-300 font-bold">Has Possession of Ball:</span>
+              <span className="text-xs font-mono text-gray-300 font-bold">
+                Has Possession of Ball:
+              </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPossessionHome(1)}
@@ -312,7 +439,7 @@ export default function PredictionsPage() {
                       : "bg-surfaceCard text-gray-400 hover:text-white"
                   }`}
                 >
-                  Home Ball (+1.1 pts)
+                  {homeTeam?.abbreviation || "Home"} Ball (+1.1 pts)
                 </button>
                 <button
                   onClick={() => setPossessionHome(0)}
@@ -322,102 +449,179 @@ export default function PredictionsPage() {
                       : "bg-surfaceCard text-gray-400 hover:text-white"
                   }`}
                 >
-                  Away Ball (-1.1 pts)
+                  {awayTeam?.abbreviation || "Away"} Ball (-1.1 pts)
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Probability Gauge Result */}
           <div className="bg-surface p-6 rounded-xl border border-borderDark flex flex-col justify-between text-center space-y-4">
             <div>
-              <span className="text-xs font-mono uppercase text-gray-400">Calculated Win Probability</span>
-              <div className="text-5xl font-extrabold font-mono text-emerald-400 mt-2">
+              <span className="text-xs font-mono uppercase text-gray-400">
+                Calculated Win Probability
+              </span>
+              <div
+                className="text-5xl font-extrabold font-mono mt-2"
+                style={{ color: homeColor }}
+              >
                 {winProb ? `${(winProb.home_win_prob * 100).toFixed(1)}%` : "50.0%"}
               </div>
               <span className="text-xs text-gray-400 font-mono mt-1 block">
-                Home Team Victory Probability
+                {homeTeam?.abbreviation || "Home"} Victory Probability
               </span>
             </div>
 
             <div className="space-y-2 text-xs font-mono">
               <div className="w-full h-4 rounded-full bg-surfaceCard border border-borderDark overflow-hidden flex">
                 <div
-                  className="bg-emerald-500 h-full transition-all duration-150"
-                  style={{ width: `${(winProb?.home_win_prob ?? 0.5) * 100}%` }}
+                  className="h-full transition-all duration-150"
+                  style={{
+                    width: `${(winProb?.home_win_prob ?? 0.5) * 100}%`,
+                    backgroundColor: homeColor,
+                  }}
                 />
                 <div
-                  className="bg-red-500 h-full transition-all duration-150"
-                  style={{ width: `${(winProb?.away_win_prob ?? 0.5) * 100}%` }}
+                  className="h-full transition-all duration-150"
+                  style={{
+                    width: `${(winProb?.away_win_prob ?? 0.5) * 100}%`,
+                    backgroundColor: awayColor,
+                  }}
                 />
               </div>
-              <div className="flex justify-between text-gray-400">
-                <span>Home: {((winProb?.home_win_prob ?? 0.5) * 100).toFixed(1)}%</span>
-                <span>Away: {((winProb?.away_win_prob ?? 0.5) * 100).toFixed(1)}%</span>
+              <div className="flex justify-between font-bold">
+                <span style={{ color: homeColor }}>
+                  {homeTeam?.abbreviation || "Home"}:{" "}
+                  {((winProb?.home_win_prob ?? 0.5) * 100).toFixed(1)}%
+                </span>
+                <span style={{ color: awayColor }}>
+                  {awayTeam?.abbreviation || "Away"}:{" "}
+                  {((winProb?.away_win_prob ?? 0.5) * 100).toFixed(1)}%
+                </span>
               </div>
-            </div>
-
-            <div className="p-2.5 rounded-lg bg-surfaceCard border border-borderDark text-[11px] font-mono text-gray-400">
-              Standardized Margin Velocity:{" "}
-              <strong className="text-white">
-                {winProb
-                  ? (
-                      winProb.score_margin /
-                      Math.sqrt((winProb.seconds_remaining || 1) + 1)
-                    ).toFixed(2)
-                  : "0.00"}
-              </strong>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Part 3: Historical Clutch Game Replay */}
-      {timeline.length > 0 && (
-        <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-borderDark pb-3">
-            <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <span>📈</span> Real Game Win Probability Timeline
-              </h2>
-              <p className="text-xs text-gray-400 font-mono">
-                Marquee Replay: Boston Celtics (118) vs Los Angeles Lakers (105)
-              </p>
-            </div>
-            <span className="text-xs font-mono text-accent">Game 0022300061</span>
+      {/* Part 3: Complete 10-Season Historical Games Archive (12,729 Games) */}
+      <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-borderDark pb-4">
+          <div>
+            <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+              <span>📚</span> Complete 10-Season NBA Game Results Archive (12,729 Games)
+            </h2>
+            <p className="text-xs text-gray-400 font-mono mt-0.5">
+              Every Regular Season &amp; Playoff game from 2015-16 through 2024-25. Filter by season, franchise, or date.
+            </p>
           </div>
 
-          {/* Visual Step Chart */}
-          <div className="h-44 w-full flex items-end gap-1 pt-4 pb-2">
-            {timeline.map((point, idx) => {
-              const hPct = point.home_win_prob * 100;
-              return (
-                <div
-                  key={idx}
-                  className="flex-1 flex flex-col items-center h-full justify-end group relative"
-                >
-                  <div
-                    className="w-full bg-accent/70 hover:bg-accent rounded-t transition"
-                    style={{ height: `${hPct}%` }}
-                  />
-                  {/* Tooltip */}
-                  <div className="hidden group-hover:block absolute bottom-full mb-2 bg-surface border border-borderDark p-2 rounded-lg text-[10px] font-mono whitespace-nowrap z-20 shadow-xl">
-                    <p className="text-white font-bold">Q{point.period} &middot; Margin: {point.score_margin > 0 ? `+${point.score_margin}` : point.score_margin}</p>
-                    <p className="text-accent">BOS Win Prob: {hPct.toFixed(1)}%</p>
-                    <p className="text-gray-400">{point.home_score} - {point.away_score}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-between text-xs font-mono text-gray-500 border-t border-borderDark pt-2">
-            <span>Tip-off (Q1 12:00)</span>
-            <span>Halftime (Q2 0:00)</span>
-            <span>Clutch Time (Q4 5:00)</span>
-            <span>Final Buzzer (0:00)</span>
+          <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+            <input
+              type="text"
+              placeholder="Search date or matchup..."
+              value={archiveSearch}
+              onChange={(e) => setArchiveSearch(e.target.value)}
+              className="bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-accent w-44"
+            />
+            <select
+              value={archiveSeason}
+              onChange={(e) => setArchiveSeason(e.target.value)}
+              className="bg-surface border border-accent/50 rounded-xl px-3 py-1.5 font-bold text-white"
+            >
+              {SEASONS_10YR.map((s) => (
+                <option key={s} value={s}>
+                  {s} Season
+                </option>
+              ))}
+              <option value="ALL">All 10 Seasons (12,729 Games)</option>
+            </select>
+            <select
+              value={archiveTeam}
+              onChange={(e) => setArchiveTeam(e.target.value)}
+              className="bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-white"
+            >
+              <option value="ALL">All 30 Teams</option>
+              {homeTeams.map((t) => (
+                <option key={t.abbreviation} value={t.abbreviation}>
+                  {t.abbreviation} - {t.full_name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={archiveType}
+              onChange={(e) => setArchiveType(e.target.value)}
+              className="bg-surface border border-borderDark rounded-xl px-3 py-1.5 text-white"
+            >
+              <option value="ALL">Reg Season + Playoffs</option>
+              <option value="Regular Season">Regular Season</option>
+              <option value="Playoffs">Playoffs</option>
+            </select>
           </div>
         </div>
-      )}
+
+        <div className="flex items-center justify-between text-xs font-mono text-gray-400">
+          <span>
+            Matching Games: <strong className="text-white">{historicalGames.length.toLocaleString()}</strong>
+          </span>
+          <span>Showing top 150 matching results</span>
+        </div>
+
+        <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
+          <table className="w-full text-left text-xs font-mono">
+            <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
+              <tr>
+                <th className="py-2.5 px-3">Date</th>
+                <th className="py-2.5 px-3">Season</th>
+                <th className="py-2.5 px-3">Stage</th>
+                <th className="py-2.5 px-3">Away Team</th>
+                <th className="py-2.5 px-3 text-center">Final Score</th>
+                <th className="py-2.5 px-3">Home Team</th>
+                <th className="py-2.5 px-3 text-right">Differential</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-borderDark/40">
+              {historicalGames.slice(0, 150).map((g) => {
+                const homeWon = g.h_pts >= g.a_pts;
+                return (
+                  <tr key={g.id} className="hover:bg-surface/60 transition">
+                    <td className="py-2.5 px-3 text-gray-300">{g.date}</td>
+                    <td className="py-2.5 px-3 text-gray-400">{g.season}</td>
+                    <td className="py-2.5 px-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          g.type === "Playoffs"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                            : "bg-surface border border-borderDark text-gray-400"
+                        }`}
+                      >
+                        {g.type}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={!homeWon ? "font-extrabold text-white" : "text-gray-400"}>
+                        {g.away} ({g.a_pts})
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-bold text-white">
+                      {g.a_pts} - {g.h_pts}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={homeWon ? "font-extrabold text-white" : "text-gray-400"}>
+                        {g.home} ({g.h_pts})
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-bold">
+                      <span className={homeWon ? "text-emerald-400" : "text-cyan-400"}>
+                        {homeWon ? `${g.home} +${g.margin}` : `${g.away} +${Math.abs(g.margin)}`}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

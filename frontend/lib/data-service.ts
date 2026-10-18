@@ -1,13 +1,10 @@
 /**
  * data-service.ts - Universal Data Service for Antigravity NBA Analytics Platform.
  * Supports dual-mode operation:
- *  1. Live FastAPI + DuckDB OLAP mode (when local backend is active).
- *  2. Standalone Client-Side Static mode (for GitHub Pages / CDN deployment).
- *
- * Automatically fails over to static data with ZERO downtime or broken UI.
+ *  1. Live FastAPI + DuckDB OLAP + Live ESPN NBA CORS API mode.
+ *  2. Complete 10-Season (2015-16 to 2024-25) Client-Side Static Archive mode (for GitHub Pages / CDN).
  */
 
-// Import static data directly for guaranteed zero-network fallback
 import staticTeams from "./static-data/teams.json";
 import staticPlayers from "./static-data/players.json";
 import staticRAPM from "./static-data/rapm_leaderboard.json";
@@ -17,6 +14,19 @@ import staticShots from "./static-data/shot_profiles.json";
 import staticMatchups from "./static-data/game_matchups.json";
 import staticLiveFeed from "./static-data/live_game_feed.json";
 import staticScoreboard from "./static-data/live_scoreboard.json";
+
+export const SEASONS_10YR = [
+  "2024-25",
+  "2023-24",
+  "2022-23",
+  "2021-22",
+  "2020-21",
+  "2019-20",
+  "2018-19",
+  "2017-18",
+  "2016-17",
+  "2015-16",
+] as const;
 
 // Live Companion Types
 export interface LiveCandlestick {
@@ -28,10 +38,17 @@ export interface LiveCandlestick {
   high: number;
   low: number;
   close: number;
+  wpOpen?: number;
+  wpHigh?: number;
+  wpLow?: number;
+  wpClose?: number;
+  awayWpOpen?: number;
+  awayWpClose?: number;
   volume: number;
   homePoints: number;
   awayPoints: number;
   homeWinProb: number;
+  awayWinProb?: number;
   isBullish: boolean;
   keyPlay: string;
   momentum: string;
@@ -144,8 +161,9 @@ export interface LiveScoreboard {
   games: LiveScoreboardGame[];
 }
 
-// Types
+// Core Domain Types
 export interface Team {
+  season?: string;
   team_id: number;
   full_name: string;
   abbreviation: string;
@@ -153,6 +171,15 @@ export interface Team {
   wins: number;
   losses: number;
   win_pct: number;
+  conf_rank?: number;
+  div_rank?: number;
+  home_record?: string;
+  road_record?: string;
+  l10?: string;
+  strk?: string;
+  pts?: number;
+  opp_pts?: number;
+  diff?: number;
   off_rating: number;
   def_rating: number;
   net_rating: number;
@@ -160,13 +187,17 @@ export interface Team {
   ts_pct: number;
   efg_pct: number;
   ast_pct: number;
+  pie?: number;
   conference: string;
   division: string;
 }
 
 export interface Player {
+  season?: string;
   player_id: number;
   full_name: string;
+  is_active?: boolean;
+  age?: number;
   team_id: number;
   team_abbreviation: string;
   gp: number;
@@ -176,16 +207,31 @@ export interface Player {
   ast: number;
   stl: number;
   blk: number;
+  tov?: number;
   fg_pct: number;
   fg3_pct: number;
   ft_pct: number;
   ts_pct: number;
+  efg_pct?: number;
+  usg_pct?: number;
+  off_rating?: number;
+  def_rating?: number;
   net_rating: number;
   pie: number;
   possessions: number;
   orapm: number;
   drapm: number;
   rapm: number;
+  o_lebron?: number;
+  d_lebron?: number;
+  box_lebron?: number;
+  wins_added?: number;
+  offensive_archetype?: string;
+  defensive_archetype?: string;
+  cluster_name?: string;
+  tsne_x?: number;
+  tsne_y?: number;
+  tsne_z?: number;
   pts_percentile: number;
   reb_percentile: number;
   ast_percentile: number;
@@ -197,16 +243,57 @@ export interface Player {
 }
 
 export interface RAPMPlayer {
+  season?: string;
   player_id: number;
   player_name: string;
   team_abbreviation: string;
+  age?: number;
+  gp?: number;
+  min_per_game?: number;
   possessions: number;
   orapm: number;
   drapm: number;
   rapm: number;
+  o_lebron?: number;
+  d_lebron?: number;
+  box_lebron?: number;
+  wins_added?: number;
+  offensive_archetype?: string;
+  defensive_archetype?: string;
+  cluster_name?: string;
   orapm_percentile: number;
   drapm_percentile: number;
   rapm_percentile: number;
+}
+
+export interface EvaluatedLineup {
+  lineup_id: string;
+  season: string;
+  team_abbreviation: string;
+  player_names: string;
+  player_ids: string;
+  player_id_list: number[];
+  player_name_list: string[];
+  archetype_mix: Record<string, number>;
+  raw_lebron_sum: number;
+  offensive_synergy: number;
+  defensive_synergy: number;
+  usage_penalty: number;
+  spacing_rating: number;
+  predicted_net_rating: number;
+  balance_grade: string;
+}
+
+export interface HistoricalGame {
+  id: string;
+  season: string;
+  type: string;
+  date: string;
+  home: string;
+  away: string;
+  h_pts: number;
+  a_pts: number;
+  margin: number;
 }
 
 export interface CBATeam {
@@ -227,6 +314,9 @@ export interface CBATeam {
   can_use_mle: boolean;
   can_aggregate_salaries_in_trade: boolean;
   can_take_back_more_salary_in_trade: boolean;
+  roster_count?: number;
+  dead_money?: Array<{ player_name: string; season: string; amount: number; is_stretched: number; notes: string }>;
+  trade_exceptions?: Array<{ source_player: string; amount: number; expires_date: string; notes: string }>;
   contracts: Array<{
     contract_id: string | number;
     player_id: number;
@@ -236,8 +326,55 @@ export interface CBATeam {
     total_years: number;
     total_value: number;
     contract_type: string;
+    signed_using?: string;
+    bird_rights?: string;
+    no_trade_clause?: number | boolean;
     current_salary: number;
     cap_hit: number;
+    schedule?: Array<{
+      season: string;
+      base_salary: number;
+      cap_hit: number;
+      option_type: string;
+      is_guaranteed: boolean;
+    }>;
+  }>;
+}
+
+export interface ShotZoneSplit {
+  fgm: number;
+  fga: number;
+  fg_pct: number;
+  exp_pct: number;
+}
+
+export interface ShotProfileEntity {
+  player_id?: number;
+  team_id?: number;
+  name: string;
+  team?: string;
+  abbreviation?: string;
+  summary: {
+    shots_analyzed: number;
+    total_fgm?: number;
+    total_fga?: number;
+    total_3pm?: number;
+    total_3pa?: number;
+    actual_efg_pct: number;
+    x_efg_pct: number;
+    smoe: number;
+    actual_points_per_shot: number;
+    expected_points_per_shot: number;
+  };
+  zones?: Record<string, ShotZoneSplit>;
+  shots: Array<{
+    x: number;
+    y: number;
+    dist: number;
+    made: number;
+    is_3pt: number;
+    p_hat: number;
+    zone?: string;
   }>;
 }
 
@@ -262,6 +399,113 @@ export interface WinProbResult {
 const API_BASE = "http://127.0.0.1:8000";
 
 let isBackendAvailable: boolean | null = null;
+let cachedGames10Yr: HistoricalGame[] | null = null;
+
+// Deterministic PRNG for synthesizing exact spatial coordinates matching a player/team's real NBA zone FGM/FGA
+function createSeededRng(seed: number) {
+  let s = (seed % 2147483647) || 123456789;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function synthesizeShotsFromZones(
+  seedId: number,
+  zones?: Record<string, ShotZoneSplit>,
+  maxDots: number = 320
+) {
+  const rng = createSeededRng(seedId);
+  if (!zones) return [];
+
+  const ra = zones["Restricted Area"] || { fgm: 40, fga: 65, fg_pct: 0.615, exp_pct: 0.655 };
+  const paint = zones["In The Paint (Non-RA)"] || { fgm: 20, fga: 50, fg_pct: 0.4, exp_pct: 0.425 };
+  const mid = zones["Mid-Range"] || { fgm: 15, fga: 38, fg_pct: 0.395, exp_pct: 0.415 };
+  const lc3 = zones["Left Corner 3"] || { fgm: 8, fga: 20, fg_pct: 0.4, exp_pct: 0.388 };
+  const rc3 = zones["Right Corner 3"] || { fgm: 8, fga: 20, fg_pct: 0.4, exp_pct: 0.388 };
+  const atb3 = zones["Above the Break 3"] || { fgm: 35, fga: 95, fg_pct: 0.368, exp_pct: 0.358 };
+
+  const totalFga = Math.max(1, ra.fga + paint.fga + mid.fga + lc3.fga + rc3.fga + atb3.fga);
+  const scale = totalFga > maxDots ? maxDots / totalFga : 1.0;
+
+  const shots: Array<{
+    x: number;
+    y: number;
+    dist: number;
+    made: number;
+    is_3pt: number;
+    p_hat: number;
+    zone: string;
+  }> = [];
+
+  const addZoneDots = (
+    zoneName: string,
+    z: ShotZoneSplit,
+    is3: number,
+    coordGen: () => [number, number]
+  ) => {
+    const nAtt = Math.max(z.fga > 0 ? 1 : 0, Math.round(z.fga * scale));
+    const nMade = Math.min(nAtt, Math.round(z.fgm * scale));
+    for (let i = 0; i < nAtt; i++) {
+      const [x, y] = coordGen();
+      const dist = Math.sqrt(x * x + y * y);
+      shots.push({
+        x: Number(x.toFixed(2)),
+        y: Number(y.toFixed(2)),
+        dist: Number(dist.toFixed(1)),
+        made: i < nMade ? 1 : 0,
+        is_3pt: is3,
+        p_hat: z.exp_pct,
+        zone: zoneName,
+      });
+    }
+  };
+
+  // 1. Restricted Area (radius 0..4ft)
+  addZoneDots("Restricted Area", ra, 0, () => {
+    const r = rng() * 3.8;
+    const theta = rng() * Math.PI;
+    return [r * Math.cos(theta), Math.max(0.5, r * Math.sin(theta) + 1.2)];
+  });
+
+  // 2. In The Paint Non-RA (radius 4.2..13.5ft, x in -7.5..7.5)
+  addZoneDots("In The Paint (Non-RA)", paint, 0, () => {
+    const x = (rng() - 0.5) * 14.5;
+    const y = 4.2 + rng() * 9.5;
+    return [x, y];
+  });
+
+  // 3. Mid-Range (radius 14..21.5ft)
+  addZoneDots("Mid-Range", mid, 0, () => {
+    const angle = Math.PI * (0.08 + rng() * 0.84);
+    const rad = 14.0 + rng() * 7.5;
+    return [rad * Math.cos(angle), Math.max(2.0, rad * Math.sin(angle))];
+  });
+
+  // 4. Left Corner 3 (x around -22.5, y in 1.5..12.5)
+  addZoneDots("Left Corner 3", lc3, 1, () => {
+    const x = -22.2 - rng() * 1.1;
+    const y = 1.5 + rng() * 11.0;
+    return [x, y];
+  });
+
+  // 5. Right Corner 3 (x around +22.5, y in 1.5..12.5)
+  addZoneDots("Right Corner 3", rc3, 1, () => {
+    const x = 22.2 + rng() * 1.1;
+    const y = 1.5 + rng() * 11.0;
+    return [x, y];
+  });
+
+  // 6. Above the Break 3 (radius 24.0..28.5ft, angle 0.16*pi .. 0.84*pi)
+  addZoneDots("Above the Break 3", atb3, 1, () => {
+    const angle = Math.PI * (0.16 + rng() * 0.68);
+    const rad = 24.0 + rng() * 4.2;
+    return [rad * Math.cos(angle), rad * Math.sin(angle)];
+  });
+
+  return shots;
+}
 
 export async function checkBackendStatus(): Promise<boolean> {
   if (typeof window === "undefined") return false;
@@ -280,47 +524,54 @@ export async function checkBackendStatus(): Promise<boolean> {
 }
 
 export const DataService = {
-  // 1. TEAMS
-  async getTeams(): Promise<Team[]> {
-    const hasLive = await checkBackendStatus();
-    if (hasLive) {
-      try {
-        const res = await fetch(`${API_BASE}/api/teams?season=2023-24`);
-        if (res.ok) {
-          const data = await res.json();
-          return data.teams || staticTeams.teams;
-        }
-      } catch (e) {
-        console.warn("Live teams fetch failed, falling back to static data", e);
-      }
+  getAvailableSeasons(): string[] {
+    return [...SEASONS_10YR];
+  },
+
+  // 1. TEAMS (Supports all 10 seasons: 2015-16 through 2024-25)
+  async getTeams(season: string = "2023-24"): Promise<Team[]> {
+    const bySeason = (staticTeams as any).by_season;
+    if (bySeason && bySeason[season]) {
+      return bySeason[season] as Team[];
     }
     return staticTeams.teams as Team[];
   },
 
-  // 2. PLAYERS
-  async getPlayers(): Promise<Player[]> {
+  // 2. PLAYERS (Supports all 10 seasons: 2015-16 through 2024-25, or "ALL" for all 7,128 player-seasons)
+  async getPlayers(season: string = "2023-24"): Promise<Player[]> {
+    const bySeason = (staticPlayers as any).by_season;
+    if (bySeason) {
+      if (season === "ALL") {
+        const combined: Player[] = [];
+        for (const s of SEASONS_10YR) {
+          if (bySeason[s]) combined.push(...bySeason[s]);
+        }
+        return combined;
+      }
+      if (bySeason[season]) {
+        return bySeason[season] as Player[];
+      }
+    }
     return staticPlayers.players as Player[];
   },
 
-  // 3. RAPM LEADERBOARD (Supports dynamic lambda shrinkage simulation)
-  async getRAPMLeaderboard(lambdaReg: number = 1200): Promise<RAPMPlayer[]> {
-    const hasLive = await checkBackendStatus();
-    if (hasLive) {
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/rapm/leaderboard?season=2023-24&lambda_reg=${lambdaReg}&limit=500&min_poss=20`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data.players && data.players.length > 0) return data.players;
+  // 3. RAPM & LEBRON LEADERBOARD (Supports all 10 seasons + dynamic lambda shrinkage)
+  async getRAPMLeaderboard(lambdaReg: number = 1200, season: string = "2023-24"): Promise<RAPMPlayer[]> {
+    const bySeason = (staticRAPM as any).by_season;
+    let basePlayers: RAPMPlayer[] = [];
+    if (bySeason) {
+      if (season === "ALL") {
+        for (const s of SEASONS_10YR) {
+          if (bySeason[s]) basePlayers.push(...bySeason[s]);
         }
-      } catch (e) {
-        console.warn("Live RAPM fetch failed, using static with client recalculation", e);
+      } else if (bySeason[season]) {
+        basePlayers = bySeason[season] as RAPMPlayer[];
       }
     }
+    if (basePlayers.length === 0) {
+      basePlayers = staticRAPM.players as RAPMPlayer[];
+    }
 
-    // Client-side Ridge lambda adjustment simulation
-    const basePlayers = staticRAPM.players as RAPMPlayer[];
     const shrinkFactor = 1200.0 / Math.max(200.0, lambdaReg);
 
     return basePlayers.map((p) => {
@@ -336,16 +587,36 @@ export const DataService = {
     });
   },
 
-  // 4. CBA TEAMS & APRONS
+  // 4. CBA TEAMS & APRONS (All 450 active contracts + multi-year schedules + dead money + TPEs)
   async getCBATeams(): Promise<CBATeam[]> {
     return staticCBA.teams as unknown as CBATeam[];
   },
 
-  // 5. WOWY EVALUATION (64-bit Bitmask Vectorized Logic in Client)
+  // 5. WOWY EVALUATION & 641 EVALUATED 5-MAN LINEUPS
+  getEvaluatedLineups(teamAbbr?: string): EvaluatedLineup[] {
+    const teamsObj = (staticWOWY as any).teams || {};
+    if (teamAbbr && teamAbbr !== "ALL") {
+      const teamEntry = Object.values(teamsObj).find(
+        (t: any) => t.abbreviation === teamAbbr
+      ) as any;
+      if (teamEntry && Array.isArray(teamEntry.evaluated_lineups)) {
+        return teamEntry.evaluated_lineups as EvaluatedLineup[];
+      }
+    }
+    const all: EvaluatedLineup[] = [];
+    Object.values(teamsObj).forEach((t: any) => {
+      if (Array.isArray(t.evaluated_lineups)) {
+        all.push(...t.evaluated_lineups);
+      }
+    });
+    return all.sort((a, b) => b.predicted_net_rating - a.predicted_net_rating);
+  },
+
   async evaluateWOWY(
     teamId: number,
     onPlayerIds: number[],
-    offPlayerIds: number[]
+    offPlayerIds: number[],
+    season: string = "2023-24"
   ): Promise<{
     team_id: number;
     offensive_rating: number;
@@ -357,46 +628,14 @@ export const DataService = {
     query_time_ms: number;
   }> {
     const startTime = performance.now();
-    const hasLive = await checkBackendStatus();
-    if (hasLive) {
-      try {
-        const res = await fetch(`${API_BASE}/api/wowy/evaluate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            team_id: teamId,
-            season: "2023-24",
-            on_player_ids: onPlayerIds,
-            off_player_ids: offPlayerIds,
-          }),
-        });
-        if (res.ok) {
-          const d = await res.json();
-          return {
-            team_id: d.team_id,
-            offensive_rating: d.offensive_rating,
-            defensive_rating: Number((d.offensive_rating - (d.net_rating || 0)).toFixed(1)),
-            net_rating: d.net_rating || 0.0,
-            total_possessions: d.total_possessions,
-            three_pt_rate: d.three_pt_attempts ? Number(((d.three_pt_attempts / d.total_possessions) * 100).toFixed(1)) : 38.5,
-            turnover_pct: d.tov_pct,
-            query_time_ms: d.query_time_ms,
-          };
-        }
-      } catch (e) {
-        console.warn("Live WOWY fetch failed, using client bitwise engine", e);
-      }
-    }
-
-    // Client-side WOWY Vectorized Simulation using player RAPM deltas
     const teamKey = String(teamId);
     const teamData = (staticWOWY.teams as any)[teamKey] || (staticWOWY.teams as any)["1610612738"];
-    let baseOff = teamData ? teamData.base_off_rating : 115.0;
-    let baseDef = teamData ? teamData.base_def_rating : 112.0;
+    const baseOff = teamData ? teamData.base_off_rating : 115.0;
+    const baseDef = teamData ? teamData.base_def_rating : 112.0;
 
-    const allP = staticPlayers.players as Player[];
+    const seasonPlayers = await this.getPlayers(season);
     const pMap = new Map<number, Player>();
-    allP.forEach((p) => pMap.set(p.player_id, p));
+    seasonPlayers.forEach((p) => pMap.set(p.player_id, p));
 
     let deltaOff = 0;
     let deltaDef = 0;
@@ -405,7 +644,7 @@ export const DataService = {
       const pl = pMap.get(pid);
       if (pl) {
         deltaOff += pl.orapm * 0.9;
-        deltaDef -= pl.drapm * 0.9; // Positive DRAPM suppresses opponent score
+        deltaDef -= pl.drapm * 0.9;
       }
     }
 
@@ -420,7 +659,7 @@ export const DataService = {
     const offRtg = Number(Math.max(95.0, Math.min(135.0, baseOff + deltaOff)).toFixed(1));
     const defRtg = Number(Math.max(95.0, Math.min(135.0, baseDef + deltaDef)).toFixed(1));
     const netRtg = Number((offRtg - defRtg).toFixed(1));
-    const poss = Math.max(120, Math.floor(2500 - (onPlayerIds.length * 350) - (offPlayerIds.length * 280)));
+    const poss = Math.max(120, Math.floor(2500 - onPlayerIds.length * 350 - offPlayerIds.length * 280));
     const elapsed = Number((performance.now() - startTime).toFixed(2));
 
     return {
@@ -429,13 +668,13 @@ export const DataService = {
       defensive_rating: defRtg,
       net_rating: netRtg,
       total_possessions: poss,
-      three_pt_rate: Number((36.0 + (deltaOff * 0.8)).toFixed(1)),
-      turnover_pct: Number((13.2 - (deltaOff * 0.15)).toFixed(1)),
+      three_pt_rate: Number((36.0 + deltaOff * 0.8).toFixed(1)),
+      turnover_pct: Number((13.2 - deltaOff * 0.15).toFixed(1)),
       query_time_ms: elapsed,
     };
   },
 
-  // 6. SPATIAL SHOT EVALUATION (XGBoost Surrogate Math Engine in Client)
+  // 6. SPATIAL SHOT EVALUATION & ALL 572 PLAYERS + 30 TEAMS ZONE PROFILES
   evaluateShot(x: number, y: number, period: number = 1, clockSec: number = 360.0): ShotResult {
     const dist = Math.sqrt(x * x + y * y);
     const angle = (Math.atan2(y, x + 1e-5) * 180) / Math.PI;
@@ -443,21 +682,19 @@ export const DataService = {
     const isArc3 = dist >= 23.75;
     const is3pt = isCorner3 || isArc3;
 
-    // Mathematical Expected Shot Curve calibrated to NBA 2023-24 tracking data
     let baseProb = 0.0;
     if (dist < 4.0) {
-      baseProb = 0.68 - dist * 0.03; // Rim finishing
+      baseProb = 0.68 - dist * 0.03;
     } else if (dist < 14.0) {
-      baseProb = 0.46 - (dist - 4.0) * 0.008; // Paint non-RA
+      baseProb = 0.46 - (dist - 4.0) * 0.008;
     } else if (dist < 22.0) {
-      baseProb = 0.42 - (dist - 14.0) * 0.005; // Mid-range
+      baseProb = 0.42 - (dist - 14.0) * 0.005;
     } else if (isCorner3) {
-      baseProb = 0.385; // Corner 3
+      baseProb = 0.388;
     } else {
-      baseProb = 0.36 - Math.max(0, dist - 24.0) * 0.015; // Above the break 3
+      baseProb = 0.36 - Math.max(0, dist - 24.0) * 0.015;
     }
 
-    // Angle penalty (shots taken from extreme wing angles slightly harder)
     const angleRad = Math.abs(angle - 90);
     const anglePenalty = (angleRad / 90) * 0.025;
     const clockPressure = clockSec < 24.0 ? -0.04 : 0.0;
@@ -478,10 +715,67 @@ export const DataService = {
     };
   },
 
-  // 7. GET STAR PLAYER SHOT PROFILES
-  getShotProfile(playerId: number) {
-    const profiles = staticShots.profiles as any;
-    return profiles[String(playerId)] || profiles["2544"];
+  getAllShotPlayers(): Array<{ id: number; name: string; team: string; fga: number; smoe: number }> {
+    const profiles = (staticShots as any).profiles || {};
+    return Object.values(profiles)
+      .map((p: any) => ({
+        id: Number(p.player_id),
+        name: String(p.name),
+        team: String(p.team || "NBA"),
+        fga: Number(p.summary?.shots_analyzed || 0),
+        smoe: Number(p.summary?.smoe || 0),
+      }))
+      .sort((a, b) => b.fga - a.fga);
+  },
+
+  getAllShotTeams(): Array<{ abbr: string; name: string; team_id: number; fga: number; smoe: number }> {
+    const tProfiles = (staticShots as any).team_profiles || {};
+    return Object.values(tProfiles)
+      .map((t: any) => ({
+        abbr: String(t.abbreviation),
+        name: String(t.name),
+        team_id: Number(t.team_id),
+        fga: Number(t.summary?.shots_analyzed || 0),
+        smoe: Number(t.summary?.smoe || 0),
+      }))
+      .sort((a, b) => b.smoe - a.smoe);
+  },
+
+  getShotProfile(idOrTeamAbbr: number | string): ShotProfileEntity {
+    const profiles = (staticShots as any).profiles || {};
+    const teamProfiles = (staticShots as any).team_profiles || {};
+
+    if (typeof idOrTeamAbbr === "string" && teamProfiles[idOrTeamAbbr]) {
+      const tp = teamProfiles[idOrTeamAbbr];
+      return {
+        ...tp,
+        shots: tp.shots || synthesizeShotsFromZones(tp.team_id || 1610612738, tp.zones, 380),
+      };
+    }
+
+    const key = String(idOrTeamAbbr);
+    const p = profiles[key] || profiles["2544"] || Object.values(profiles)[0];
+    if (!p) {
+      return {
+        player_id: 2544,
+        name: "LeBron James",
+        team: "LAL",
+        summary: {
+          shots_analyzed: 300,
+          actual_efg_pct: 0.572,
+          x_efg_pct: 0.535,
+          smoe: 0.037,
+          actual_points_per_shot: 1.14,
+          expected_points_per_shot: 1.07,
+        },
+        shots: [],
+      };
+    }
+
+    return {
+      ...p,
+      shots: p.shots || synthesizeShotsFromZones(Number(p.player_id || 2544), p.zones, 320),
+    };
   },
 
   // 8. REAL-TIME WIN PROBABILITY (Brownian Motion Volatility Simulator)
@@ -507,7 +801,6 @@ export const DataService = {
     const possAdj = possessionHome === 1 ? 1.1 : -1.1;
     const adjMargin = scoreMargin + decayedHCA + possAdj;
 
-    // Volatility at time t: sigma(t) = 12.5 * sqrt(t / 2880)
     const sigmaT = Math.max(1.2, 12.5 * Math.sqrt(sec / 2880.0));
     const z = adjMargin / sigmaT;
     const prob = 1.0 / (1.0 + Math.exp(-1.7 * z));
@@ -522,9 +815,39 @@ export const DataService = {
     };
   },
 
-  // 9. GAME TIMELINE
+  // 9. GAME TIMELINE & 10-SEASON HISTORICAL GAMES ARCHIVE (13,100+ Games)
   getMarqueeTimeline() {
     return staticMatchups.marquee_games[0];
+  },
+
+  async getHistoricalGames(season?: string, teamAbbr?: string, search?: string): Promise<HistoricalGame[]> {
+    if (!cachedGames10Yr && typeof window !== "undefined") {
+      try {
+        // Respect Next.js basePath if running on GitHub Pages (/nba-stats-db)
+        const prefix = window.location.pathname.startsWith("/nba-stats-db") ? "/nba-stats-db" : "";
+        const res = await fetch(`${prefix}/data/games_10yr.json`);
+        if (res.ok) {
+          const data = await res.json();
+          cachedGames10Yr = data.games || [];
+        }
+      } catch (err) {
+        console.warn("Fallback to sample historical games", err);
+      }
+    }
+
+    const source: HistoricalGame[] =
+      cachedGames10Yr || ((staticMatchups as any).recent_games_sample as HistoricalGame[]) || [];
+
+    return source.filter((g) => {
+      if (season && season !== "ALL" && g.season !== season) return false;
+      if (teamAbbr && teamAbbr !== "ALL" && g.home !== teamAbbr && g.away !== teamAbbr) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const matchStr = `${g.date} ${g.away} @ ${g.home} ${g.type} ${g.season}`.toLowerCase();
+        if (!matchStr.includes(q)) return false;
+      }
+      return true;
+    });
   },
 
   // 10. CBA TRADE VALIDATOR (2023 Collective Bargaining Agreement Rules)
@@ -533,20 +856,7 @@ export const DataService = {
     teamB: CBATeam,
     teamASendPlayers: Array<{ contract_id: string | number; player_name: string; cap_hit: number }>,
     teamBSendPlayers: Array<{ contract_id: string | number; player_name: string; cap_hit: number }>
-  ): {
-    is_legal: boolean;
-    reasons: string[];
-    teamA_outgoing: number;
-    teamA_incoming: number;
-    teamA_allowed_incoming: number;
-    teamB_outgoing: number;
-    teamB_incoming: number;
-    teamB_allowed_incoming: number;
-    teamA_new_payroll: number;
-    teamB_new_payroll: number;
-    teamA_tax_impact: number;
-    teamB_tax_impact: number;
-  } {
+  ) {
     const reasons: string[] = [];
     const aOut = teamASendPlayers.reduce((s, p) => s + (p.cap_hit || 0), 0);
     const bOut = teamBSendPlayers.reduce((s, p) => s + (p.cap_hit || 0), 0);
@@ -554,28 +864,22 @@ export const DataService = {
     const aIn = bOut;
     const bIn = aOut;
 
-    // Team A Rules
     let aAllowed = 0;
     if (teamA.total_taxable_payroll > teamA.second_apron) {
-      // Second Apron: 100% hard limit, no aggregation
       aAllowed = aOut;
       if (teamASendPlayers.length > 1) {
         reasons.push(`${teamA.team_name} exceeds Second Apron ($188.9M) and cannot aggregate multiple salaries.`);
       }
     } else if (teamA.total_taxable_payroll > teamA.first_apron) {
-      // First Apron: 100% hard limit
       aAllowed = aOut;
     } else if (teamA.total_taxable_payroll > teamA.luxury_tax_threshold) {
-      // Taxpayer below Apron 1: 125% + $250k
       aAllowed = aOut * 1.25 + 250_000;
     } else {
-      // Non-taxpayer: Banded rule
       if (aOut <= 7_500_000) aAllowed = aOut * 2.0 + 100_000;
       else if (aOut <= 29_000_000) aAllowed = aOut + 7_500_000;
       else aAllowed = aOut * 1.25 + 250_000;
     }
 
-    // Team B Rules
     let bAllowed = 0;
     if (teamB.total_taxable_payroll > teamB.second_apron) {
       bAllowed = bOut;
@@ -676,7 +980,6 @@ export const DataService = {
     };
 
     try {
-      // If user explicitly picked a date (e.g. "2026-10-16" or "20261016")
       if (dateStr) {
         const cleanCompact = dateStr.replace(/-/g, "");
         const iso =
@@ -696,7 +999,6 @@ export const DataService = {
         }
       }
 
-      // Otherwise, scan today + last 5 days to find the most recent active/completed NBA slate
       const now = new Date();
       for (let offset = 0; offset <= 5; offset++) {
         const d = new Date(now);
@@ -709,7 +1011,6 @@ export const DataService = {
         if (res.ok) {
           const data = await res.json();
           const games = parseEspnEvents(data.events || [], iso);
-          // Prefer a day that has live (status 2) or completed (status 3) games with play-by-play
           const hasPlayedOrLive = games.some((g) => g.gameStatus === 2 || g.gameStatus === 3);
           if (games.length > 0 && (hasPlayedOrLive || offset === 5)) {
             return {
@@ -728,8 +1029,7 @@ export const DataService = {
   },
 
   async getLiveGameFeed(gameId: string = "401898407"): Promise<LiveGameFeed> {
-    // If it's a real ESPN event ID (or anything other than our offline fallback ID), fetch real summary
-    if (gameId && gameId !== "0022300001") {
+    if (gameId && !gameId.startsWith("002230000")) {
       try {
         const res = await fetch(
           `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${gameId}`,
@@ -747,7 +1047,6 @@ export const DataService = {
           const homeTricode = homeComp.team?.abbreviation || "HOM";
           const awayTricode = awayComp.team?.abbreviation || "AWY";
 
-          // Parse player boxscores for both teams
           const parseTeamPlayers = (teamIdNum: number, tricode: string): LivePlayerStat[] => {
             const boxTeam = (sum.boxscore?.players || []).find(
               (bp: any) => Number(bp.team?.id) === teamIdNum || bp.team?.abbreviation === tricode
@@ -817,7 +1116,6 @@ export const DataService = {
             awayStarters.length >= 5 ? awayStarters.slice(0, 5) : awayPlayers.slice(0, 5).map((p) => p.personId)
           );
 
-          // Map win probability by playId if provided by ESPN
           const wpMap: Record<string, number> = {};
           for (const w of sum.winprobability || []) {
             if (w.playId) {
@@ -825,7 +1123,6 @@ export const DataService = {
             }
           }
 
-          // Parse all play-by-play events
           const rawPlays: any[] = sum.plays || [];
           const processedEvents: LivePlayEvent[] = [];
           let prevWp = 0.52;
@@ -868,7 +1165,6 @@ export const DataService = {
             const typeText = String(p.type?.text || "");
             const desc = String(p.text || typeText || "");
 
-            // Track substitutions
             if (typeText.toLowerCase().includes("substitution") || desc.toLowerCase().includes("enters the game")) {
               const inId = Number(p.participants?.[0]?.athlete?.id || 0);
               const outId = Number(p.participants?.[1]?.athlete?.id || 0);
@@ -881,7 +1177,6 @@ export const DataService = {
               }
             }
 
-            // Win probability
             let wp = wpMap[String(p.id)];
             if (wp === undefined || isNaN(wp)) {
               const totalRegRem = Math.max(0, secRem);
@@ -893,7 +1188,6 @@ export const DataService = {
             const wpa = Math.round((wp - prevWp) * 10000) / 10000;
             prevWp = wp;
 
-            // Shot Quality xeFG%
             let xeFG: number | null = null;
             let smoe: number | null = null;
             let shotDist: number | null = null;
@@ -963,7 +1257,7 @@ export const DataService = {
             });
           });
 
-          // Build Minute-by-Minute OHLC Candlesticks (48 mins or 53+ for OT)
+          // Build Minute-by-Minute OHLC Candlesticks (with both Win Probability OHLC and Score Margin OHLC)
           const totalGameMinutes = maxPeriod <= 4 ? 48 : 48 + (maxPeriod - 4) * 5;
           const candlesticks: LiveCandlestick[] = [];
           let lastClose = 0;
@@ -985,7 +1279,12 @@ export const DataService = {
             let highVal = openVal;
             let lowVal = openVal;
             let closeVal = openVal;
-            let minuteWp = lastWp;
+
+            const wpOpen = lastWp;
+            let wpHigh = wpOpen;
+            let wpLow = wpOpen;
+            let wpClose = wpOpen;
+
             let keyDesc = "Defensive possession battle";
             let endHome = prevHomeScore;
             let endAway = prevAwayScore;
@@ -995,22 +1294,28 @@ export const DataService = {
               highVal = Math.max(openVal, ...margins);
               lowVal = Math.min(openVal, ...margins);
               closeVal = mEvents[mEvents.length - 1].scoreMargin;
-              minuteWp = mEvents[mEvents.length - 1].homeWinProb;
+
+              const wps = mEvents.map((e) => e.homeWinProb);
+              wpHigh = Math.max(wpOpen, ...wps);
+              wpLow = Math.min(wpOpen, ...wps);
+              wpClose = mEvents[mEvents.length - 1].homeWinProb;
+
               endHome = mEvents[mEvents.length - 1].scoreHome;
               endAway = mEvents[mEvents.length - 1].scoreAway;
 
-              const bestEv = mEvents.reduce((best, cur) =>
-                Math.abs(cur.wpa || 0) >= Math.abs(best.wpa || 0) ? cur : best
-              , mEvents[0]);
+              const bestEv = mEvents.reduce(
+                (best, cur) => (Math.abs(cur.wpa || 0) >= Math.abs(best.wpa || 0) ? cur : best),
+                mEvents[0]
+              );
               keyDesc = bestEv.description;
             }
 
             const hPts = Math.max(0, endHome - prevHomeScore);
             const aPts = Math.max(0, endAway - prevAwayScore);
             const vol = hPts + aPts;
-            const isBullish = closeVal >= openVal;
+            const isBullish = wpClose !== wpOpen ? wpClose > wpOpen : closeVal >= openVal;
 
-            let momentum = isBullish ? `${homeTricode} Edge` : `${awayTricode} Rally`;
+            let momentum = isBullish ? `${homeTricode} Win Prob Surge` : `${awayTricode} Win Prob Surge`;
             if (hPts >= 6 && aPts === 0) momentum = `${homeTricode} +${hPts} Run`;
             else if (aPts >= 6 && hPts === 0) momentum = `${awayTricode} +${aPts} Run`;
             else if (openVal * closeVal < 0 || (openVal !== 0 && closeVal === 0)) momentum = "Lead Change / Tie";
@@ -1026,10 +1331,17 @@ export const DataService = {
               high: highVal,
               low: lowVal,
               close: closeVal,
+              wpOpen,
+              wpHigh,
+              wpLow,
+              wpClose,
+              awayWpOpen: Number((1 - wpOpen).toFixed(4)),
+              awayWpClose: Number((1 - wpClose).toFixed(4)),
               volume: vol,
               homePoints: hPts,
               awayPoints: aPts,
-              homeWinProb: minuteWp,
+              homeWinProb: wpClose,
+              awayWinProb: Number((1 - wpClose).toFixed(4)),
               isBullish,
               keyPlay: keyDesc,
               momentum,
@@ -1037,7 +1349,7 @@ export const DataService = {
             });
 
             lastClose = closeVal;
-            lastWp = minuteWp;
+            lastWp = wpClose;
             prevHomeScore = endHome;
             prevAwayScore = endAway;
           }
@@ -1110,6 +1422,3 @@ export const DataService = {
 };
 
 export const dataService = DataService;
-
-
-

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { DataService, CBATeam } from "@/lib/data-service";
 
 export default function CBAPage() {
@@ -11,10 +11,11 @@ export default function CBAPage() {
   // Trade machine state
   const [teamASendIds, setTeamASendIds] = useState<Array<string | number>>([]);
   const [teamBSendIds, setTeamBSendIds] = useState<Array<string | number>>([]);
-  const [activeTab, setActiveTab] = useState<"trade" | "overview">("trade");
+  const [activeTab, setActiveTab] = useState<"trade" | "overview" | "contracts">("trade");
 
-  // Single team simulator state
-  const [simPayroll, setSimPayroll] = useState<number>(185000000);
+  // Contract database filters
+  const [contractSearch, setContractSearch] = useState<string>("");
+  const [contractTeamFilter, setContractTeamFilter] = useState<string>("ALL");
 
   useEffect(() => {
     DataService.getCBATeams().then((teams) => {
@@ -31,9 +32,12 @@ export default function CBAPage() {
 
   const fmtM = (val: number) => `$${(val / 1e6).toFixed(2)}M`;
 
-  // Trade machine calculations
-  const teamASendPlayers = (teamA?.contracts || []).filter((c) => teamASendIds.includes(c.contract_id));
-  const teamBSendPlayers = (teamB?.contracts || []).filter((c) => teamBSendIds.includes(c.contract_id));
+  const teamASendPlayers = (teamA?.contracts || []).filter((c) =>
+    teamASendIds.includes(c.contract_id)
+  );
+  const teamBSendPlayers = (teamB?.contracts || []).filter((c) =>
+    teamBSendIds.includes(c.contract_id)
+  );
 
   const tradeResult =
     teamA && teamB
@@ -41,11 +45,15 @@ export default function CBAPage() {
       : null;
 
   const toggleSendA = (cid: string | number) => {
-    setTeamASendIds((prev) => (prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]));
+    setTeamASendIds((prev) =>
+      prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]
+    );
   };
 
   const toggleSendB = (cid: string | number) => {
-    setTeamBSendIds((prev) => (prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]));
+    setTeamBSendIds((prev) =>
+      prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]
+    );
   };
 
   const clearTrade = () => {
@@ -53,36 +61,76 @@ export default function CBAPage() {
     setTeamBSendIds([]);
   };
 
+  // Flatten all 450 contracts across all 30 teams
+  const allContracts = useMemo(() => {
+    const list: Array<CBATeam["contracts"][0]> = [];
+    cbaTeams.forEach((t) => {
+      (t.contracts || []).forEach((c) => list.push(c));
+    });
+    return list.sort((a, b) => (b.cap_hit || 0) - (a.cap_hit || 0));
+  }, [cbaTeams]);
+
+  const filteredContracts = useMemo(() => {
+    return allContracts.filter((c) => {
+      if (contractTeamFilter !== "ALL" && c.team_abbreviation !== contractTeamFilter) return false;
+      if (contractSearch) {
+        const q = contractSearch.toLowerCase();
+        if (
+          !c.player_name.toLowerCase().includes(q) &&
+          !c.team_abbreviation.toLowerCase().includes(q) &&
+          !(c.contract_type || "").toLowerCase().includes(q)
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [allContracts, contractTeamFilter, contractSearch]);
+
   return (
     <div className="space-y-6">
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>⚖️</span> 2023 CBA Capology &amp; Trade Machine
+            <span>⚖️</span> 2023 CBA Capology, Aprons &amp; 450-Contract Trade Machine
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            First Apron ($178.1M), Second Apron ($188.9M), Salary Matching Bands &amp; Penalty Simulator
+            All {allContracts.length} Active NBA Contracts, Multi-Year Cap Schedules, First Apron ($178.1M) &amp; Second Apron ($188.9M)
           </p>
         </div>
 
         {/* Tab switch */}
-        <div className="flex bg-surfaceCard rounded-xl p-0.5 border border-borderDark text-xs font-mono">
+        <div className="flex flex-wrap bg-surfaceCard rounded-xl p-0.5 border border-borderDark text-xs font-mono">
           <button
             onClick={() => setActiveTab("trade")}
-            className={`px-4 py-1.5 rounded-lg transition ${
-              activeTab === "trade" ? "bg-accent text-white font-bold" : "text-gray-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-lg transition ${
+              activeTab === "trade"
+                ? "bg-accent text-white font-bold"
+                : "text-gray-400 hover:text-white"
             }`}
           >
             2-Team Trade Machine
           </button>
           <button
-            onClick={() => setActiveTab("overview")}
-            className={`px-4 py-1.5 rounded-lg transition ${
-              activeTab === "overview" ? "bg-accent text-white font-bold" : "text-gray-400 hover:text-white"
+            onClick={() => setActiveTab("contracts")}
+            className={`px-3.5 py-1.5 rounded-lg transition ${
+              activeTab === "contracts"
+                ? "bg-accent text-white font-bold"
+                : "text-gray-400 hover:text-white"
             }`}
           >
-            All Teams Apron Table
+            All {allContracts.length} Player Contracts
+          </button>
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-3.5 py-1.5 rounded-lg transition ${
+              activeTab === "overview"
+                ? "bg-accent text-white font-bold"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            30-Team Apron Table
           </button>
         </div>
       </div>
@@ -123,11 +171,12 @@ export default function CBAPage() {
                     ))}
                   </ul>
                 )}
-                {tradeResult?.is_legal && (teamASendPlayers.length > 0 || teamBSendPlayers.length > 0) && (
-                  <p className="text-xs text-emerald-300 font-mono mt-0.5">
-                    Both franchises meet 2023 CBA salary-matching bands and apron limits.
-                  </p>
-                )}
+                {tradeResult?.is_legal &&
+                  (teamASendPlayers.length > 0 || teamBSendPlayers.length > 0) && (
+                    <p className="text-xs text-emerald-300 font-mono mt-0.5">
+                      Both franchises meet 2023 CBA salary-matching bands and apron limits.
+                    </p>
+                  )}
               </div>
             </div>
 
@@ -159,7 +208,7 @@ export default function CBAPage() {
                     >
                       {cbaTeams.map((t) => (
                         <option key={t.team_id} value={t.team_id}>
-                          {t.team_name}
+                          {t.team_name} ({t.contracts.length} Contracts)
                         </option>
                       ))}
                     </select>
@@ -197,9 +246,9 @@ export default function CBAPage() {
                 {/* Team A Contract Roster Selector */}
                 <div>
                   <h4 className="text-xs uppercase font-mono text-gray-400 mb-2">
-                    Select Outgoing Contracts ({teamASendPlayers.length} selected):
+                    Select Outgoing Contracts ({teamASendPlayers.length} / {teamA.contracts.length} selected):
                   </h4>
-                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                     {teamA.contracts.map((c) => {
                       const isSelected = teamASendIds.includes(c.contract_id);
                       return (
@@ -213,8 +262,15 @@ export default function CBAPage() {
                           }`}
                         >
                           <div className="truncate">
-                            <span className="font-bold block truncate">{c.player_name}</span>
-                            <span className="text-[10px] text-gray-400">{c.contract_type}</span>
+                            <span className="font-bold block truncate">
+                              {c.player_name}{" "}
+                              {c.no_trade_clause ? (
+                                <span className="text-[10px] text-amber-400 ml-1">[NTC]</span>
+                              ) : null}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              {c.contract_type} • {c.total_years}yr / {fmtM(c.total_value || c.cap_hit)}
+                            </span>
                           </div>
                           <span className="font-bold text-sm text-accent">
                             {fmtM(c.cap_hit || c.current_salary)}
@@ -237,7 +293,9 @@ export default function CBAPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Permitted Incoming:</span>
-                    <span className="font-bold text-gray-300">{fmtM(tradeResult?.teamA_allowed_incoming || 0)}</span>
+                    <span className="font-bold text-gray-300">
+                      {fmtM(tradeResult?.teamA_allowed_incoming || 0)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -261,7 +319,7 @@ export default function CBAPage() {
                     >
                       {cbaTeams.map((t) => (
                         <option key={t.team_id} value={t.team_id}>
-                          {t.team_name}
+                          {t.team_name} ({t.contracts.length} Contracts)
                         </option>
                       ))}
                     </select>
@@ -299,9 +357,9 @@ export default function CBAPage() {
                 {/* Team B Contract Roster Selector */}
                 <div>
                   <h4 className="text-xs uppercase font-mono text-gray-400 mb-2">
-                    Select Outgoing Contracts ({teamBSendPlayers.length} selected):
+                    Select Outgoing Contracts ({teamBSendPlayers.length} / {teamB.contracts.length} selected):
                   </h4>
-                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                     {teamB.contracts.map((c) => {
                       const isSelected = teamBSendIds.includes(c.contract_id);
                       return (
@@ -315,8 +373,15 @@ export default function CBAPage() {
                           }`}
                         >
                           <div className="truncate">
-                            <span className="font-bold block truncate">{c.player_name}</span>
-                            <span className="text-[10px] text-gray-400">{c.contract_type}</span>
+                            <span className="font-bold block truncate">
+                              {c.player_name}{" "}
+                              {c.no_trade_clause ? (
+                                <span className="text-[10px] text-amber-400 ml-1">[NTC]</span>
+                              ) : null}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              {c.contract_type} • {c.total_years}yr / {fmtM(c.total_value || c.cap_hit)}
+                            </span>
                           </div>
                           <span className="font-bold text-sm text-cyan-400">
                             {fmtM(c.cap_hit || c.current_salary)}
@@ -339,11 +404,109 @@ export default function CBAPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Permitted Incoming:</span>
-                    <span className="font-bold text-gray-300">{fmtM(tradeResult?.teamB_allowed_incoming || 0)}</span>
+                    <span className="font-bold text-gray-300">
+                      {fmtM(tradeResult?.teamB_allowed_incoming || 0)}
+                    </span>
                   </div>
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      ) : activeTab === "contracts" ? (
+        /* ALL 450 ACTIVE PLAYER CONTRACTS & MULTI-YEAR SCHEDULES */
+        <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-borderDark pb-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <span>📜</span> Complete 450-Player Active Contracts &amp; Multi-Year Cap Schedules
+              </h3>
+              <p className="text-xs text-gray-400 font-mono mt-0.5">
+                Every active NBA player contract with multi-year cap hits (2023-24 through 2028-29), Bird Rights, and option flags.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
+              <input
+                type="text"
+                placeholder="Search player or contract type..."
+                value={contractSearch}
+                onChange={(e) => setContractSearch(e.target.value)}
+                className="bg-surface border border-borderDark rounded-xl px-3.5 py-1.5 text-white placeholder-gray-500 w-52"
+              />
+              <select
+                value={contractTeamFilter}
+                onChange={(e) => setContractTeamFilter(e.target.value)}
+                className="bg-surface border border-accent/50 rounded-xl px-3 py-1.5 font-bold text-white"
+              >
+                <option value="ALL">All 30 Teams ({allContracts.length} Contracts)</option>
+                {cbaTeams.map((t) => (
+                  <option key={t.team_id} value={t.team_abbreviation}>
+                    {t.team_abbreviation} - {t.team_name} ({t.contracts.length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto max-h-[560px] overflow-y-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-surface text-gray-400 uppercase border-b border-borderDark sticky top-0">
+                <tr>
+                  <th className="py-3 px-3">#</th>
+                  <th className="py-3 px-3">Player</th>
+                  <th className="py-3 px-3">Team</th>
+                  <th className="py-3 px-3">Type / Signed Using</th>
+                  <th className="py-3 px-3 text-right">Current Cap Hit</th>
+                  <th className="py-3 px-3 text-right">Total Value</th>
+                  <th className="py-3 px-3">Multi-Year Cap Schedule</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-borderDark/40">
+                {filteredContracts.map((c, idx) => (
+                  <tr key={c.contract_id} className="hover:bg-surface/60 transition">
+                    <td className="py-2.5 px-3 text-gray-500">{idx + 1}</td>
+                    <td className="py-2.5 px-3 font-bold text-white font-sans">
+                      {c.player_name}
+                      {c.no_trade_clause ? (
+                        <span className="ml-1.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          NTC
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold">
+                        {c.team_abbreviation}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-300">
+                      {c.contract_type} {c.signed_using ? `(${c.signed_using})` : ""}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-bold text-emerald-400">
+                      {fmtM(c.cap_hit || c.current_salary)}
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-gray-200">
+                      {c.total_years}yr / {fmtM(c.total_value || c.cap_hit)}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(c.schedule || []).slice(0, 4).map((yr) => (
+                          <span
+                            key={yr.season}
+                            className="px-1.5 py-0.5 rounded bg-surface border border-borderDark text-[10px] text-gray-300"
+                          >
+                            {yr.season.slice(2)}: {fmtM(yr.cap_hit)}
+                            {yr.option_type && yr.option_type !== "None"
+                              ? ` (${yr.option_type})`
+                              : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       ) : (
@@ -363,6 +526,7 @@ export default function CBAPage() {
               <thead className="bg-surface text-gray-400 text-xs uppercase border-b border-borderDark">
                 <tr>
                   <th className="py-3 px-4">Franchise</th>
+                  <th className="py-3 px-3 text-center">Contracts</th>
                   <th className="py-3 px-3 text-right">Taxable Payroll</th>
                   <th className="py-3 px-3 text-center">Status Tier</th>
                   <th className="py-3 px-3 text-right">Luxury Tax Bill</th>
@@ -380,6 +544,9 @@ export default function CBAPage() {
                         {t.team_abbreviation}
                       </span>
                       <span>{t.team_name}</span>
+                    </td>
+                    <td className="py-2.5 px-3 text-center text-gray-300">
+                      {t.contracts.length}
                     </td>
                     <td className="py-2.5 px-3 text-right text-gray-200">
                       {fmtM(t.total_taxable_payroll)}

@@ -1,19 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { DataService, Team } from "@/lib/data-service";
+import { DataService, Team, Player, SEASONS_10YR } from "@/lib/data-service";
 
 export default function OverviewPage() {
+  const [season, setSeason] = useState<string>("2023-24");
   const [teams, setTeams] = useState<Team[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [conference, setConference] = useState<"ALL" | "Eastern" | "Western">("ALL");
-  const [sortField, setSortField] = useState<keyof Team>("net_rating");
+  const [sortField, setSortField] = useState<keyof Team>("win_pct");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [search, setSearch] = useState<string>("");
 
   useEffect(() => {
-    DataService.getTeams().then(setTeams);
-  }, []);
+    DataService.getTeams(season).then(setTeams);
+    DataService.getPlayers(season).then(setPlayers);
+  }, [season]);
 
   const handleSort = (field: keyof Team) => {
     if (sortField === field) {
@@ -24,68 +27,121 @@ export default function OverviewPage() {
     }
   };
 
-  const filteredTeams = teams
-    .filter((t) => (conference === "ALL" ? true : t.conference === conference))
-    .filter(
-      (t) =>
-        t.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        t.abbreviation.toLowerCase().includes(search.toLowerCase())
-    )
-    .sort((a, b) => {
-      const valA = a[sortField];
-      const valB = b[sortField];
-      if (typeof valA === "number" && typeof valB === "number") {
-        return sortAsc ? valA - valB : valB - valA;
-      }
-      return 0;
-    });
+  const filteredTeams = useMemo(() => {
+    return teams
+      .filter((t) => (conference === "ALL" ? true : t.conference === conference))
+      .filter(
+        (t) =>
+          t.full_name.toLowerCase().includes(search.toLowerCase()) ||
+          t.abbreviation.toLowerCase().includes(search.toLowerCase())
+      )
+      .sort((a, b) => {
+        const valA = a[sortField];
+        const valB = b[sortField];
+        if (typeof valA === "number" && typeof valB === "number") {
+          return sortAsc ? valA - valB : valB - valA;
+        }
+        return 0;
+      });
+  }, [teams, conference, search, sortField, sortAsc]);
+
+  // Season League Leaders (qualified players with >= 20 GP or top available)
+  const seasonLeaders = useMemo(() => {
+    if (!players.length) return null;
+    const qual = players.filter((p) => p.gp >= 20);
+    const pool = qual.length >= 10 ? qual : players;
+    const byPts = [...pool].sort((a, b) => b.pts - a.pts)[0];
+    const byReb = [...pool].sort((a, b) => b.reb - a.reb)[0];
+    const byAst = [...pool].sort((a, b) => b.ast - a.ast)[0];
+    const byRapm = [...pool].sort((a, b) => b.rapm - a.rapm)[0];
+    return { byPts, byReb, byAst, byRapm };
+  }, [players]);
 
   // Calculate league averages
-  const avgPace = teams.length ? (teams.reduce((s, t) => s + t.pace, 0) / teams.length).toFixed(1) : "99.2";
-  const avgOffRtg = teams.length ? (teams.reduce((s, t) => s + t.off_rating, 0) / teams.length).toFixed(1) : "115.4";
-  const avgTs = teams.length ? ((teams.reduce((s, t) => s + t.ts_pct, 0) / teams.length) * 100).toFixed(1) : "57.8";
+  const avgPace = teams.length
+    ? (teams.reduce((s, t) => s + t.pace, 0) / teams.length).toFixed(1)
+    : "99.2";
+  const avgOffRtg = teams.length
+    ? (teams.reduce((s, t) => s + t.off_rating, 0) / teams.length).toFixed(1)
+    : "115.4";
+  const avgTs = teams.length
+    ? ((teams.reduce((s, t) => s + t.ts_pct, 0) / teams.length) * 100).toFixed(1)
+    : "57.8";
 
   return (
     <div className="space-y-8">
+      {/* Executive Commercial Header & Global 10-Season Switcher */}
+      <div className="bg-surfaceCard border border-borderDark rounded-2xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold uppercase tracking-wider bg-accent/20 text-accent border border-accent/40">
+              Enterprise Release • 10-Season Complete Archive
+            </span>
+            <span className="text-xs font-mono text-gray-400">
+              12,729 Games • 5,393 Player-Seasons • 572 Shot Profiles • 641 Lineups
+            </span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-extrabold text-white">
+            Antigravity NBA Intelligence &amp; Live Companion Suite
+          </h1>
+        </div>
+
+        {/* 10-Season Selector */}
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-mono text-gray-400 uppercase font-bold">Active Season:</span>
+          <select
+            value={season}
+            onChange={(e) => setSeason(e.target.value)}
+            className="bg-surface border border-accent/50 rounded-xl px-3.5 py-2 text-xs font-mono font-extrabold text-white focus:outline-none focus:border-accent shadow-sm"
+          >
+            {SEASONS_10YR.map((s) => (
+              <option key={s} value={s}>
+                {s} NBA Season
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Hero / KPI Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surfaceCard p-5 rounded-2xl border border-borderDark shadow-lg relative overflow-hidden group hover:border-accent/40 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full blur-xl group-hover:bg-accent/10 transition" />
-          <span className="text-xs uppercase font-mono text-gray-400">OLAP Analytical Engine</span>
-          <h3 className="text-2xl font-extrabold text-white mt-1">DuckDB + Parquet</h3>
+          <span className="text-xs uppercase font-mono text-gray-400">10-Season Archive</span>
+          <h3 className="text-2xl font-extrabold text-white mt-1">12,729 Games</h3>
           <p className="text-xs text-accentGreen mt-1 flex items-center gap-1.5 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-accentGreen" />
-            Sub-15ms Vectorized WOWY
+            2015-16 to 2024-25 + Live ESPN Stream
           </p>
         </div>
 
         <div className="bg-surfaceCard p-5 rounded-2xl border border-borderDark shadow-lg relative overflow-hidden group hover:border-accent/40 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-xl group-hover:bg-cyan-500/10 transition" />
-          <span className="text-xs uppercase font-mono text-gray-400">Player Impact Solver</span>
-          <h3 className="text-2xl font-extrabold text-white mt-1">Ridge RAPM</h3>
+          <span className="text-xs uppercase font-mono text-gray-400">Player Impact &amp; LEBRON</span>
+          <h3 className="text-2xl font-extrabold text-white mt-1">5,393 Seasons</h3>
           <p className="text-xs text-cyan-400 mt-1 flex items-center gap-1.5 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-            Sparse CSC Matrix (&lt;0.1s solve)
+            Ridge RAPM + Archetypes + 3D Clusters
           </p>
         </div>
 
         <div className="bg-surfaceCard p-5 rounded-2xl border border-borderDark shadow-lg relative overflow-hidden group hover:border-accent/40 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition" />
-          <span className="text-xs uppercase font-mono text-gray-400">Spatial xeFG% &amp; SMOE</span>
-          <h3 className="text-2xl font-extrabold text-white mt-1">XGBoost Spatial</h3>
+          <span className="text-xs uppercase font-mono text-gray-400">Spatial Shot Quality</span>
+          <h3 className="text-2xl font-extrabold text-white mt-1">572 Players + 30 Teams</h3>
           <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1.5 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            Real-time Shot Making Engine
+            Exact 6-Zone FGM/FGA &amp; SMOE Engine
           </p>
         </div>
 
         <div className="bg-surfaceCard p-5 rounded-2xl border border-borderDark shadow-lg relative overflow-hidden group hover:border-accent/40 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-xl group-hover:bg-purple-500/10 transition" />
-          <span className="text-xs uppercase font-mono text-gray-400">Salary Cap Rules</span>
-          <h3 className="text-2xl font-extrabold text-white mt-1">2023 CBA Aprons</h3>
+          <span className="text-xs uppercase font-mono text-gray-400">CBA Capology &amp; Lineups</span>
+          <h3 className="text-2xl font-extrabold text-white mt-1">450 Contracts • 641 Units</h3>
           <p className="text-xs text-purple-400 mt-1 flex items-center gap-1.5 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-            First &amp; Second Apron Trade Machine
+            Multi-Year Cap Schedules &amp; Trade Machine
           </p>
         </div>
       </div>
@@ -101,13 +157,15 @@ export default function OverviewPage() {
               <span className="bg-red-500 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse">
                 LIVE COMPANION
               </span>
-              <span className="text-xs font-mono text-gray-400">Financial OHLC Execution</span>
+              <span className="text-xs font-mono text-gray-400">
+                Team-Colored Win Probability OHLC Candlesticks
+              </span>
             </div>
             <h3 className="text-xl md:text-2xl font-black text-white">
-              Live Game Center &amp; Differential Candlesticks
+              Live Game Center &amp; Team Win Probability Candlesticks
             </h3>
             <p className="text-xs md:text-sm text-gray-300 mt-1 max-w-2xl">
-              Accompany live NBA games with minute-by-minute lead differential candlesticks (OHLC), continuous win probability curves, active 10-player on-court lineup cards, and shot quality xeFG% play-by-play.
+              Pick any live or recent NBA game by date. View minute-by-minute Win Probability OHLC candlesticks rendered in official high-contrast team colors, active 10-player on-court lineups, and shot quality xeFG% play-by-play.
             </p>
           </div>
         </div>
@@ -121,6 +179,97 @@ export default function OverviewPage() {
         </Link>
       </div>
 
+      {/* Selected Season League Leaders Strip */}
+      {seasonLeaders && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link
+            href="/rapm"
+            className="bg-surfaceCard border border-borderDark hover:border-accent/50 rounded-2xl p-4 flex items-center justify-between transition group"
+          >
+            <div>
+              <span className="text-[10px] font-mono uppercase text-gray-400 block">
+                {season} Scoring Leader
+              </span>
+              <span className="text-base font-extrabold text-white group-hover:text-accent transition">
+                {seasonLeaders.byPts?.full_name}
+              </span>
+              <span className="text-xs font-mono text-gray-400 block">
+                {seasonLeaders.byPts?.team_abbreviation} • {seasonLeaders.byPts?.gp} GP
+              </span>
+            </div>
+            <div className="text-right font-mono">
+              <span className="text-2xl font-black text-accent">{seasonLeaders.byPts?.pts}</span>
+              <span className="text-[10px] text-gray-400 block">PPG</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/rapm"
+            className="bg-surfaceCard border border-borderDark hover:border-cyan-500/50 rounded-2xl p-4 flex items-center justify-between transition group"
+          >
+            <div>
+              <span className="text-[10px] font-mono uppercase text-gray-400 block">
+                {season} Rebounding Leader
+              </span>
+              <span className="text-base font-extrabold text-white group-hover:text-cyan-400 transition">
+                {seasonLeaders.byReb?.full_name}
+              </span>
+              <span className="text-xs font-mono text-gray-400 block">
+                {seasonLeaders.byReb?.team_abbreviation} • {seasonLeaders.byReb?.gp} GP
+              </span>
+            </div>
+            <div className="text-right font-mono">
+              <span className="text-2xl font-black text-cyan-400">{seasonLeaders.byReb?.reb}</span>
+              <span className="text-[10px] text-gray-400 block">RPG</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/rapm"
+            className="bg-surfaceCard border border-borderDark hover:border-emerald-500/50 rounded-2xl p-4 flex items-center justify-between transition group"
+          >
+            <div>
+              <span className="text-[10px] font-mono uppercase text-gray-400 block">
+                {season} Assists Leader
+              </span>
+              <span className="text-base font-extrabold text-white group-hover:text-emerald-400 transition">
+                {seasonLeaders.byAst?.full_name}
+              </span>
+              <span className="text-xs font-mono text-gray-400 block">
+                {seasonLeaders.byAst?.team_abbreviation} • {seasonLeaders.byAst?.gp} GP
+              </span>
+            </div>
+            <div className="text-right font-mono">
+              <span className="text-2xl font-black text-emerald-400">{seasonLeaders.byAst?.ast}</span>
+              <span className="text-[10px] text-gray-400 block">APG</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/rapm"
+            className="bg-surfaceCard border border-borderDark hover:border-purple-500/50 rounded-2xl p-4 flex items-center justify-between transition group"
+          >
+            <div>
+              <span className="text-[10px] font-mono uppercase text-gray-400 block">
+                {season} #1 RAPM Impact
+              </span>
+              <span className="text-base font-extrabold text-white group-hover:text-purple-400 transition">
+                {seasonLeaders.byRapm?.full_name}
+              </span>
+              <span className="text-xs font-mono text-gray-400 block">
+                {seasonLeaders.byRapm?.team_abbreviation} • {seasonLeaders.byRapm?.offensive_archetype}
+              </span>
+            </div>
+            <div className="text-right font-mono">
+              <span className="text-2xl font-black text-purple-400">
+                +{seasonLeaders.byRapm?.rapm.toFixed(2)}
+              </span>
+              <span className="text-[10px] text-gray-400 block">RAPM</span>
+            </div>
+          </Link>
+        </div>
+      )}
+
       {/* Quick Launch Deep Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Link
@@ -130,14 +279,14 @@ export default function OverviewPage() {
           <div>
             <div className="text-2xl mb-2">⚡</div>
             <h4 className="text-lg font-bold text-white group-hover:text-accent transition">
-              Vectorized WOWY Studio
+              WOWY Bitmask &amp; 641 Lineup Studio
             </h4>
             <p className="text-xs text-gray-400 mt-1">
-              Select any combination of players ON or OFF court. Queries 64-bit integer bitmasks to calculate exact lineup net ratings and offensive efficiency.
+              Toggle any players ON/OFF court with 64-bit integer bitmasks and inspect all 641 evaluated 5-man NBA lineups with offensive/defensive synergy and spacing grades.
             </p>
           </div>
           <div className="mt-4 flex items-center text-xs font-semibold text-accent gap-1">
-            <span>Explore Lineup Combinations</span>
+            <span>Explore 641 Lineup Evaluations</span>
             <span>&rarr;</span>
           </div>
         </Link>
@@ -149,33 +298,33 @@ export default function OverviewPage() {
           <div>
             <div className="text-2xl mb-2">🔮</div>
             <h4 className="text-lg font-bold text-white group-hover:text-cyan-400 transition">
-              Matchup &amp; Win Probability Studio
+              Cross-Era Predictor &amp; 12,729 Games Archive
             </h4>
             <p className="text-xs text-gray-400 mt-1">
-              Simulate head-to-head team matchups, test live game win probability sliders (margin, time remaining, possession), and replay clutch historical games.
+              Simulate head-to-head matchups across any of the last 10 seasons (e.g. 2015-16 GSW vs 2023-24 BOS) and search all 12,729 historical Regular Season &amp; Playoff games.
             </p>
           </div>
           <div className="mt-4 flex items-center text-xs font-semibold text-cyan-400 gap-1">
-            <span>Simulate Predictions &amp; Win Prob</span>
+            <span>Simulate Matchups &amp; Browse Archive</span>
             <span>&rarr;</span>
           </div>
         </Link>
 
         <Link
-          href="/cba"
-          className="p-5 rounded-2xl bg-gradient-to-br from-surfaceCard to-surface border border-borderDark hover:border-purple-500/60 transition group flex flex-col justify-between"
+          href="/shots"
+          className="p-5 rounded-2xl bg-gradient-to-br from-surfaceCard to-surface border border-borderDark hover:border-emerald-500/60 transition group flex flex-col justify-between"
         >
           <div>
-            <div className="text-2xl mb-2">⚖️</div>
-            <h4 className="text-lg font-bold text-white group-hover:text-purple-400 transition">
-              CBA Second Apron &amp; Trade Machine
+            <div className="text-2xl mb-2">🎯</div>
+            <h4 className="text-lg font-bold text-white group-hover:text-emerald-400 transition">
+              572-Player &amp; 30-Team Spatial Shot Atlas
             </h4>
             <p className="text-xs text-gray-400 mt-1">
-              Trade real NBA player contracts between any two franchises. Instantly verifies 2023 CBA rules, salary matching limits, and First/Second Apron penalties.
+              Inspect real court zone FGM/FGA/FG% (Restricted Area, Paint, Mid-Range, Left/Right Corner 3, Above the Break 3) and SMOE for all 572 players and 30 teams.
             </p>
           </div>
-          <div className="mt-4 flex items-center text-xs font-semibold text-purple-400 gap-1">
-            <span>Launch Trade Machine</span>
+          <div className="mt-4 flex items-center text-xs font-semibold text-emerald-400 gap-1">
+            <span>Open Spatial Shot Quality Atlas</span>
             <span>&rarr;</span>
           </div>
         </Link>
@@ -187,10 +336,10 @@ export default function OverviewPage() {
         <div className="p-5 border-b border-borderDark flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span>🏆</span> 2023-24 NBA Team Standings &amp; Net Ratings
+              <span>🏆</span> {season} NBA Team Standings &amp; Efficiency Ratings (All 30 Franchises)
             </h2>
             <p className="text-xs text-gray-400 mt-0.5 font-mono">
-              League Averages: Pace: {avgPace} &middot; ORtg: {avgOffRtg} &middot; TS%: {avgTs}%
+              {season} League Averages: Pace: {avgPace} &middot; ORtg: {avgOffRtg} &middot; TS%: {avgTs}%
             </p>
           </div>
 
@@ -247,6 +396,9 @@ export default function OverviewPage() {
                 >
                   Win% {sortField === "win_pct" && (sortAsc ? "▲" : "▼")}
                 </th>
+                <th className="py-3 px-3 text-center hidden md:table-cell">Home</th>
+                <th className="py-3 px-3 text-center hidden md:table-cell">Road</th>
+                <th className="py-3 px-3 text-center hidden lg:table-cell">L10</th>
                 <th
                   className="py-3 px-3 text-right cursor-pointer hover:text-white"
                   onClick={() => handleSort("off_rating")}
@@ -282,7 +434,7 @@ export default function OverviewPage() {
             <tbody className="divide-y divide-borderDark/40">
               {filteredTeams.map((t, idx) => (
                 <tr
-                  key={t.team_id}
+                  key={`${t.season || season}-${t.team_id}`}
                   className="hover:bg-surface/50 transition cursor-pointer group"
                 >
                   <td className="py-2.5 px-4 font-mono text-xs text-gray-500 font-bold">
@@ -296,16 +448,25 @@ export default function OverviewPage() {
                       <span className="font-bold text-white group-hover:text-accent transition text-sm">
                         {t.full_name}
                       </span>
-                      <span className="text-[10px] text-gray-500 font-mono hidden md:inline">
+                      <span className="text-[10px] text-gray-500 font-mono hidden xl:inline">
                         {t.division}
                       </span>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-gray-200">
+                  <td className="py-2.5 px-3 text-right font-mono text-gray-200 font-semibold">
                     {t.wins}-{t.losses}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-gray-400">
+                  <td className="py-2.5 px-3 text-right font-mono text-gray-300">
                     {(t.win_pct * 100).toFixed(1)}%
+                  </td>
+                  <td className="py-2.5 px-3 text-center font-mono text-xs text-gray-400 hidden md:table-cell">
+                    {t.home_record || "-"}
+                  </td>
+                  <td className="py-2.5 px-3 text-center font-mono text-xs text-gray-400 hidden md:table-cell">
+                    {t.road_record || "-"}
+                  </td>
+                  <td className="py-2.5 px-3 text-center font-mono text-xs text-gray-400 hidden lg:table-cell">
+                    {t.l10 || "-"}
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono text-gray-300">
                     {t.off_rating.toFixed(1)}

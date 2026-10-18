@@ -1,46 +1,65 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { VirtualTable, PercentileBadge } from "@/components/virtual-table";
-import { DataService, RAPMPlayer, Player } from "@/lib/data-service";
+import { DataService, RAPMPlayer, Player, SEASONS_10YR } from "@/lib/data-service";
 
 export default function RAPMPage() {
+  const [season, setSeason] = useState<string>("2023-24");
   const [players, setPlayers] = useState<RAPMPlayer[]>([]);
   const [allPlayersData, setAllPlayersData] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("ALL");
+  const [archetypeFilter, setArchetypeFilter] = useState("ALL");
   const [lambdaReg, setLambdaReg] = useState(1200);
-  const [minPoss, setMinPoss] = useState(50);
+  const [minPoss, setMinPoss] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
-  // Load RAPM data
   useEffect(() => {
     setLoading(true);
-    DataService.getRAPMLeaderboard(lambdaReg).then((data) => {
-      setPlayers(data);
+    Promise.all([
+      DataService.getRAPMLeaderboard(lambdaReg, season),
+      DataService.getPlayers(season),
+    ]).then(([rapmData, fullData]) => {
+      setPlayers(rapmData);
+      setAllPlayersData(fullData);
       setLoading(false);
     });
-  }, [lambdaReg]);
+  }, [lambdaReg, season]);
 
-  // Load detailed player profiles for slide-over inspection
-  useEffect(() => {
-    DataService.getPlayers().then(setAllPlayersData);
-  }, []);
+  const teams = useMemo(
+    () => Array.from(new Set(players.map((p) => p.team_abbreviation).filter(Boolean))).sort(),
+    [players]
+  );
 
-  const teams = Array.from(new Set(players.map((p) => p.team_abbreviation))).sort();
+  const archetypes = useMemo(
+    () =>
+      Array.from(
+        new Set(players.map((p) => p.offensive_archetype).filter(Boolean) as string[])
+      ).sort(),
+    [players]
+  );
 
-  const filtered = players
-    .filter((p) => p.possessions >= minPoss)
-    .filter((p) => (teamFilter === "ALL" ? true : p.team_abbreviation === teamFilter))
-    .filter(
-      (p) =>
-        p.player_name.toLowerCase().includes(search.toLowerCase()) ||
-        p.team_abbreviation.toLowerCase().includes(search.toLowerCase())
-    );
+  const filtered = useMemo(() => {
+    return players
+      .filter((p) => p.possessions >= minPoss)
+      .filter((p) => (teamFilter === "ALL" ? true : p.team_abbreviation === teamFilter))
+      .filter((p) =>
+        archetypeFilter === "ALL" ? true : p.offensive_archetype === archetypeFilter
+      )
+      .filter(
+        (p) =>
+          p.player_name.toLowerCase().includes(search.toLowerCase()) ||
+          p.team_abbreviation.toLowerCase().includes(search.toLowerCase()) ||
+          (p.offensive_archetype || "").toLowerCase().includes(search.toLowerCase())
+      );
+  }, [players, minPoss, teamFilter, archetypeFilter, search]);
 
   const handleRowClick = (row: RAPMPlayer) => {
-    const fullProfile = allPlayersData.find((p) => p.player_id === row.player_id);
+    const fullProfile = allPlayersData.find(
+      (p) => p.player_id === row.player_id && (!row.season || p.season === row.season)
+    );
     if (fullProfile) {
       setSelectedPlayer(fullProfile);
     }
@@ -50,17 +69,26 @@ export default function RAPMPage() {
     {
       key: "rank",
       header: "#",
-      width: "60px",
+      width: "52px",
       align: "center" as const,
-      render: (_: any, __: any) => {
-        const idx = filtered.indexOf(__) + 1;
+      render: (_: any, row: RAPMPlayer) => {
+        const idx = filtered.indexOf(row) + 1;
         return <span className="font-mono text-xs text-gray-500 font-bold">{idx}</span>;
       },
     },
     {
+      key: "season",
+      header: "Season",
+      width: "80px",
+      align: "center" as const,
+      render: (val: string) => (
+        <span className="font-mono text-[11px] text-gray-400">{val || season}</span>
+      ),
+    },
+    {
       key: "player_name",
       header: "Player",
-      width: "220px",
+      width: "215px",
       render: (val: string, row: RAPMPlayer) => (
         <div
           className="flex items-center gap-2 cursor-pointer group"
@@ -69,25 +97,35 @@ export default function RAPMPage() {
           <span className="font-bold text-white group-hover:text-accent transition truncate">
             {val}
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-borderDark text-gray-400">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-borderDark text-accent">
             {row.team_abbreviation}
           </span>
         </div>
       ),
     },
     {
+      key: "offensive_archetype",
+      header: "Offensive Archetype",
+      width: "165px",
+      render: (val: string) => (
+        <span className="text-[11px] font-mono text-cyan-300 bg-cyan-950/30 border border-cyan-800/40 px-2 py-0.5 rounded truncate inline-block max-w-[155px]">
+          {val || "All-Around"}
+        </span>
+      ),
+    },
+    {
       key: "possessions",
-      header: "Possessions",
-      width: "110px",
+      header: "Poss",
+      width: "85px",
       align: "right" as const,
       render: (val: number) => (
-        <span className="font-mono text-gray-300">{val.toLocaleString()}</span>
+        <span className="font-mono text-xs text-gray-300">{val.toLocaleString()}</span>
       ),
     },
     {
       key: "orapm",
       header: "ORAPM",
-      width: "100px",
+      width: "85px",
       align: "right" as const,
       render: (val: number) => (
         <span
@@ -96,18 +134,11 @@ export default function RAPMPage() {
           {val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2)}
         </span>
       ),
-    },
-    {
-      key: "orapm_percentile",
-      header: "Off %ile",
-      width: "100px",
-      align: "center" as const,
-      isPercentile: true,
     },
     {
       key: "drapm",
       header: "DRAPM",
-      width: "100px",
+      width: "85px",
       align: "right" as const,
       render: (val: number) => (
         <span
@@ -118,16 +149,9 @@ export default function RAPMPage() {
       ),
     },
     {
-      key: "drapm_percentile",
-      header: "Def %ile",
-      width: "100px",
-      align: "center" as const,
-      isPercentile: true,
-    },
-    {
       key: "rapm",
       header: "Total RAPM",
-      width: "110px",
+      width: "100px",
       align: "right" as const,
       render: (val: number) => (
         <span
@@ -140,9 +164,23 @@ export default function RAPMPage() {
       ),
     },
     {
+      key: "wins_added",
+      header: "Wins Added",
+      width: "95px",
+      align: "right" as const,
+      render: (val: number) => {
+        const w = typeof val === "number" ? val : 0;
+        return (
+          <span className={`font-mono font-bold text-xs ${w >= 0 ? "text-amber-300" : "text-gray-400"}`}>
+            {w > 0 ? `+${w.toFixed(1)}` : w.toFixed(1)}
+          </span>
+        );
+      },
+    },
+    {
       key: "rapm_percentile",
       header: "Impact %ile",
-      width: "110px",
+      width: "105px",
       align: "center" as const,
       isPercentile: true,
     },
@@ -154,26 +192,40 @@ export default function RAPMPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>📈</span> Regularized Adjusted Plus-Minus (RAPM)
+            <span>📈</span> 10-Season RAPM, LEBRON &amp; Player Impact Hub
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            Compressed Lineup Stints (~32k/season) solved via <code>scipy.sparse.csc_matrix</code> with Bayesian Box/Tracking Priors.
+            All 5,393 NBA Player-Seasons (2015-16 to 2024-25) with Ridge RAPM, Box LEBRON, Wins Added &amp; 3D Position Clusters.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
           <div className="bg-surfaceCard px-3 py-1.5 rounded-lg border border-borderDark text-gray-300">
-            Active Dataset: <strong className="text-accent">{players.length} Players</strong>
+            Loaded Pool: <strong className="text-accent">{players.length.toLocaleString()} Player-Seasons</strong>
           </div>
+          <select
+            value={season}
+            onChange={(e) => setSeason(e.target.value)}
+            className="bg-surfaceCard border border-accent/50 rounded-xl px-3.5 py-1.5 text-xs font-mono font-extrabold text-white focus:outline-none focus:border-accent"
+          >
+            {SEASONS_10YR.map((s) => (
+              <option key={s} value={s}>
+                {s} Season
+              </option>
+            ))}
+            <option value="ALL">ALL 10 Seasons (2015-16 to 2024-25 • 5,393 Rows)</option>
+          </select>
         </div>
       </div>
 
       {/* Control Bar: Search, Filters, and Interactive Lambda Slider */}
       <div className="bg-surfaceCard border border-borderDark rounded-2xl p-5 shadow-lg space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Search Input */}
           <div>
-            <label className="block text-xs font-mono text-gray-400 mb-1.5">Search Player / Team</label>
+            <label className="block text-xs font-mono text-gray-400 mb-1.5">
+              Search Player / Team / Role
+            </label>
             <input
               type="text"
               placeholder="e.g. Jokic, Curry, BOS..."
@@ -191,10 +243,29 @@ export default function RAPMPage() {
               onChange={(e) => setTeamFilter(e.target.value)}
               className="w-full bg-surface border border-borderDark rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent font-mono"
             >
-              <option value="ALL">All 30 Teams</option>
+              <option value="ALL">All Franchises</option>
               {teams.map((t) => (
                 <option key={t} value={t}>
                   {t}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Archetype Filter */}
+          <div>
+            <label className="block text-xs font-mono text-gray-400 mb-1.5">
+              Offensive Archetype
+            </label>
+            <select
+              value={archetypeFilter}
+              onChange={(e) => setArchetypeFilter(e.target.value)}
+              className="w-full bg-surface border border-borderDark rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent font-mono"
+            >
+              <option value="ALL">All Archetypes</option>
+              {archetypes.map((arch) => (
+                <option key={arch} value={arch}>
+                  {arch}
                 </option>
               ))}
             </select>
@@ -209,8 +280,8 @@ export default function RAPMPage() {
             <input
               type="range"
               min="0"
-              max="500"
-              step="25"
+              max="1500"
+              step="50"
               value={minPoss}
               onChange={(e) => setMinPoss(Number(e.target.value))}
               className="w-full accent-accent cursor-pointer"
@@ -235,9 +306,14 @@ export default function RAPMPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-borderDark/40 text-xs text-gray-400 font-mono">
-          <span>Showing {filtered.length} qualified players</span>
-          <span className="text-gray-500">Click any player to inspect complete profile &amp; percentiles</span>
+        <div className="flex flex-wrap items-center justify-between pt-2 border-t border-borderDark/40 text-xs text-gray-400 font-mono">
+          <span>
+            Showing <strong className="text-white">{filtered.length.toLocaleString()}</strong> players in{" "}
+            <strong className="text-accent">{season === "ALL" ? "2015-16 to 2024-25" : season}</strong>
+          </span>
+          <span className="text-gray-500">
+            Click any player row to inspect 3D Position Cluster, Archetypes, Wins Added &amp; Percentiles
+          </span>
         </div>
       </div>
 
@@ -248,15 +324,14 @@ export default function RAPMPage() {
             Solving sparse normal equations (X^T W X + &lambda; I)^(-1)...
           </div>
         ) : (
-          <VirtualTable data={filtered} columns={columns} height="560px" rowHeight={44} />
+          <VirtualTable data={filtered} columns={columns} height="600px" rowHeight={44} />
         )}
       </div>
 
       {/* Slide-over Player Inspection Modal */}
       {selectedPlayer && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surfaceCard border border-borderDark rounded-2xl max-w-lg w-full p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            {/* Close Button */}
+          <div className="bg-surfaceCard border border-borderDark rounded-2xl max-w-xl w-full p-6 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedPlayer(null)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-surface hover:bg-surfaceCard border border-borderDark flex items-center justify-center text-gray-400 hover:text-white transition"
@@ -268,15 +343,38 @@ export default function RAPMPage() {
             <div className="flex items-center gap-3">
               <span className="text-3xl">👤</span>
               <div>
-                <h3 className="text-xl font-extrabold text-white">{selectedPlayer.full_name}</h3>
-                <p className="text-xs font-mono text-gray-400">
-                  {selectedPlayer.team_abbreviation} &middot; {selectedPlayer.gp} Games Played &middot; {selectedPlayer.min_per_game} MPG
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-extrabold text-white">{selectedPlayer.full_name}</h3>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-accent/20 text-accent border border-accent/40 font-bold">
+                    {selectedPlayer.season || season}
+                  </span>
+                </div>
+                <p className="text-xs font-mono text-gray-400 mt-0.5">
+                  {selectedPlayer.team_abbreviation} &middot; Age {selectedPlayer.age || 26} &middot;{" "}
+                  {selectedPlayer.gp} GP &middot; {selectedPlayer.min_per_game} MPG &middot;{" "}
+                  {selectedPlayer.possessions.toLocaleString()} Poss
                 </p>
               </div>
             </div>
 
-            {/* Per-Game Traditional Stats */}
-            <div className="grid grid-cols-4 gap-2 text-center font-mono">
+            {/* Archetype & 3D Cluster Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+              <div className="p-2.5 rounded-xl bg-surface border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-400 block">Offensive Archetype</span>
+                <span className="font-bold text-cyan-300">{selectedPlayer.offensive_archetype}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-surface border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-400 block">Defensive Archetype</span>
+                <span className="font-bold text-emerald-300">{selectedPlayer.defensive_archetype}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-surface border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-400 block">3D t-SNE Cluster</span>
+                <span className="font-bold text-purple-300">{selectedPlayer.cluster_name}</span>
+              </div>
+            </div>
+
+            {/* Per-Game Traditional & Impact Stats */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center font-mono">
               <div className="p-2.5 rounded-xl bg-surface border border-borderDark">
                 <span className="text-[10px] uppercase text-gray-400 block">PTS</span>
                 <span className="text-base font-bold text-white">{selectedPlayer.pts}</span>
@@ -291,34 +389,56 @@ export default function RAPMPage() {
               </div>
               <div className="p-2.5 rounded-xl bg-surface border border-borderDark">
                 <span className="text-[10px] uppercase text-gray-400 block">TS%</span>
-                <span className="text-base font-bold text-white">{(selectedPlayer.ts_pct * 100).toFixed(1)}%</span>
+                <span className="text-base font-bold text-white">
+                  {(selectedPlayer.ts_pct * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-surface border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-400 block">USG%</span>
+                <span className="text-base font-bold text-cyan-400">
+                  {selectedPlayer.usg_pct ?? 20.0}%
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-surface border border-borderDark">
+                <span className="text-[10px] uppercase text-gray-400 block">WINS ADDED</span>
+                <span className="text-base font-bold text-amber-300">
+                  {selectedPlayer.wins_added ?? 0}
+                </span>
               </div>
             </div>
 
             {/* Percentile Rank Profile */}
-            <div className="space-y-2.5 text-xs font-mono pt-2 border-t border-borderDark">
+            <div className="space-y-2 text-xs font-mono pt-2 border-t border-borderDark">
               <div className="flex items-center justify-between">
-                <span className="text-gray-300">Total RAPM Impact:</span>
+                <span className="text-gray-300">
+                  Total RAPM ({selectedPlayer.rapm > 0 ? `+${selectedPlayer.rapm}` : selectedPlayer.rapm}):
+                </span>
                 <PercentileBadge value={selectedPlayer.rapm_percentile} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-300">Offensive RAPM:</span>
+                <span className="text-gray-300">
+                  Offensive RAPM ({selectedPlayer.orapm > 0 ? `+${selectedPlayer.orapm}` : selectedPlayer.orapm}):
+                </span>
                 <PercentileBadge value={selectedPlayer.orapm_percentile} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-300">Defensive RAPM:</span>
+                <span className="text-gray-300">
+                  Defensive RAPM ({selectedPlayer.drapm > 0 ? `+${selectedPlayer.drapm}` : selectedPlayer.drapm}):
+                </span>
                 <PercentileBadge value={selectedPlayer.drapm_percentile} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-300">Scoring Volume:</span>
+                <span className="text-gray-300">Scoring Volume ({selectedPlayer.pts} PPG):</span>
                 <PercentileBadge value={selectedPlayer.pts_percentile} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-300">Playmaking (AST):</span>
+                <span className="text-gray-300">Playmaking ({selectedPlayer.ast} APG):</span>
                 <PercentileBadge value={selectedPlayer.ast_percentile} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-300">True Shooting Efficiency:</span>
+                <span className="text-gray-300">
+                  True Shooting Efficiency ({(selectedPlayer.ts_pct * 100).toFixed(1)}%):
+                </span>
                 <PercentileBadge value={selectedPlayer.ts_percentile} />
               </div>
             </div>
@@ -327,7 +447,7 @@ export default function RAPMPage() {
               onClick={() => setSelectedPlayer(null)}
               className="w-full py-2 bg-surface hover:bg-surfaceCard border border-borderDark rounded-xl text-xs font-bold text-gray-300 hover:text-white transition"
             >
-              Close
+              Close Profile
             </button>
           </div>
         </div>
