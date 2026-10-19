@@ -20,6 +20,26 @@ export default function CBAPage() {
   useEffect(() => {
     DataService.getCBATeams().then((teams) => {
       setCbaTeams(teams);
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const tParam = params.get("team");
+        if (tParam) {
+          const found = teams.find(
+            (t) =>
+              String(t.team_id) === tParam ||
+              t.team_abbreviation.toUpperCase() === tParam.toUpperCase()
+          );
+          if (found) {
+            setSelectedTeamAId(found.team_id);
+            setContractTeamFilter(found.team_abbreviation);
+            if (teams.length > 1) {
+              const alt = teams.find((t) => t.team_id !== found.team_id) || teams[1];
+              setSelectedTeamBId(alt.team_id);
+            }
+            return;
+          }
+        }
+      }
       if (teams.length > 1) {
         setSelectedTeamAId(teams[0].team_id);
         setSelectedTeamBId(teams[1].team_id);

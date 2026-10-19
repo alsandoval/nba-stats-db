@@ -255,7 +255,7 @@ export default function OverviewPage() {
       {seasonLeaders && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link
-            href="/rapm"
+            href={`/rapm?player=${seasonLeaders.byPts?.player_id}`}
             className="bg-surfaceCard border border-borderDark hover:border-accent/50 rounded-2xl p-4 flex items-center justify-between transition group"
           >
             <div>
@@ -276,7 +276,7 @@ export default function OverviewPage() {
           </Link>
 
           <Link
-            href="/rapm"
+            href={`/rapm?player=${seasonLeaders.byReb?.player_id}`}
             className="bg-surfaceCard border border-borderDark hover:border-cyan-500/50 rounded-2xl p-4 flex items-center justify-between transition group"
           >
             <div>
@@ -297,7 +297,7 @@ export default function OverviewPage() {
           </Link>
 
           <Link
-            href="/rapm"
+            href={`/rapm?player=${seasonLeaders.byAst?.player_id}`}
             className="bg-surfaceCard border border-borderDark hover:border-emerald-500/50 rounded-2xl p-4 flex items-center justify-between transition group"
           >
             <div>
@@ -318,7 +318,7 @@ export default function OverviewPage() {
           </Link>
 
           <Link
-            href="/rapm"
+            href={`/rapm?player=${seasonLeaders.byRapm?.player_id}`}
             className="bg-surfaceCard border border-borderDark hover:border-purple-500/50 rounded-2xl p-4 flex items-center justify-between transition group"
           >
             <div>
@@ -728,19 +728,19 @@ export default function OverviewPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-borderDark text-xs font-mono">
               <div className="flex flex-wrap items-center gap-2">
                 <Link
-                  href="/wowy"
+                  href={`/wowy?team=${selectedFranchise.team_id}`}
                   className="px-3.5 py-2 rounded-xl bg-accent hover:bg-accentHover text-white font-bold transition"
                 >
                   ⚡ Open in WOWY Lineup Studio
                 </Link>
                 <Link
-                  href="/shots"
+                  href={`/shots?team=${selectedFranchise.abbreviation}`}
                   className="px-3.5 py-2 rounded-xl bg-surface hover:bg-surfaceCard border border-borderDark text-emerald-400 font-bold transition"
                 >
                   🎯 Team Spatial Shot Atlas
                 </Link>
                 <Link
-                  href="/cba"
+                  href={`/cba?team=${selectedFranchise.team_id}`}
                   className="px-3.5 py-2 rounded-xl bg-surface hover:bg-surfaceCard border border-borderDark text-purple-400 font-bold transition"
                 >
                   ⚖️ Cap Sheet &amp; Trade Machine

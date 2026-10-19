@@ -24,6 +24,20 @@ export default function ComparePage() {
   const [careerB, setCareerB] = useState<Player[]>([]);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const p1 = params.get("p1");
+      const s1 = params.get("s1");
+      const p2 = params.get("p2");
+      const s2 = params.get("s2");
+      if (s1 && SEASONS_10YR.includes(s1 as any)) setSeasonA(s1);
+      if (p1 && !isNaN(Number(p1))) setPlayerAId(Number(p1));
+      if (s2 && SEASONS_10YR.includes(s2 as any)) setSeasonB(s2);
+      if (p2 && !isNaN(Number(p2))) setPlayerBId(Number(p2));
+    }
+  }, []);
+
+  useEffect(() => {
     DataService.getPlayers(seasonA).then(setPlayersA);
   }, [seasonA]);
 

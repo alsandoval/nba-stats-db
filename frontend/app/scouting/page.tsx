@@ -1,9 +1,64 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import { DataService } from "@/lib/data-service";
+import { getTeamPalette } from "@/components/differential-candlestick-chart";
 
 type MainTab = "clutch" | "hustle" | "defense" | "draft";
+
+function PlayerCell({ name }: { name: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 group">
+      <Link
+        href={`/rapm?player=${encodeURIComponent(name)}`}
+        className="font-bold text-white font-sans hover:text-accent transition truncate"
+        title={`Open ${name} 10-Season Dossier`}
+      >
+        {name}
+      </Link>
+      <div className="hidden group-hover:flex items-center gap-1 shrink-0">
+        <Link
+          href={`/rapm?player=${encodeURIComponent(name)}`}
+          className="px-1.5 py-0.5 rounded bg-surface border border-borderDark text-[9px] font-mono text-accent hover:bg-accent/20"
+          title="10-Season Dossier"
+        >
+          📈
+        </Link>
+        <Link
+          href={`/shots?player=${encodeURIComponent(name)}`}
+          className="px-1.5 py-0.5 rounded bg-surface border border-borderDark text-[9px] font-mono text-emerald-300 hover:bg-emerald-500/20"
+          title="Spatial Shot Map"
+        >
+          🎯
+        </Link>
+        <Link
+          href={`/compare?p1=${encodeURIComponent(name)}`}
+          className="px-1.5 py-0.5 rounded bg-surface border border-borderDark text-[9px] font-mono text-amber-300 hover:bg-amber-500/20"
+          title="Head-to-Head Compare"
+        >
+          ⚔️
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function TeamBadge({ abbr }: { abbr: string }) {
+  const pal = getTeamPalette(abbr || "NBA");
+  return (
+    <span
+      className="px-2 py-0.5 rounded font-mono font-extrabold text-[10px]"
+      style={{
+        backgroundColor: `${pal.primary}28`,
+        color: pal.secondary === "#000000" ? "#E2E8F0" : pal.secondary,
+        border: `1px solid ${pal.primary}66`,
+      }}
+    >
+      {abbr}
+    </span>
+  );
+}
 
 export default function ScoutingAndClutchPage() {
   const dataset = useMemo(() => DataService.getScoutingDataset() as any, []);
@@ -18,6 +73,19 @@ export default function ScoutingAndClutchPage() {
   const [minGp, setMinGp] = useState<number>(10);
   const [sortCol, setSortCol] = useState<string>("default");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q") || params.get("player");
+    const team = params.get("team");
+    const tab = params.get("tab") as MainTab | null;
+    if (q) setSearch(q);
+    if (team) setTeamFilter(team.toUpperCase());
+    if (tab && ["clutch", "hustle", "defense", "draft"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, []);
 
   const clutchPlayers: any[] = dataset?.clutch_players || [];
   const clutchTeams: any[] = dataset?.clutch_teams || [];
@@ -164,6 +232,39 @@ export default function ScoutingAndClutchPage() {
     () => [...draftPicks].sort((a, b) => b.vope - a.vope)[0],
     [draftPicks]
   );
+
+  const exportCsv = () => {
+    let rows: any[] = [];
+    if (activeTab === "clutch") {
+      rows = entityMode === "players" ? filteredClutchPlayers : clutchTeams;
+    } else if (activeTab === "hustle") {
+      rows = entityMode === "players" ? filteredHustlePlayers : hustleTeams;
+    } else if (activeTab === "defense") {
+      rows = filteredDefensePlayers;
+    } else {
+      rows = draftMode === "vope" ? filteredDraftPicks : filteredCombine;
+    }
+    if (!rows.length) return;
+    const keys = Object.keys(rows[0]);
+    const csv = [
+      keys.join(","),
+      ...rows.map((r) =>
+        keys
+          .map((k) => {
+            const val = r[k] ?? "";
+            return typeof val === "string" && val.includes(",") ? `"${val}"` : val;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `antigravity_scouting_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
@@ -335,48 +436,57 @@ export default function ScoutingAndClutchPage() {
           )}
         </div>
 
-        {/* Sub-mode toggles */}
-        {(activeTab === "clutch" || activeTab === "hustle") && (
-          <div className="flex bg-surface rounded-xl p-0.5 border border-borderDark text-xs font-mono">
-            <button
-              onClick={() => setEntityMode("players")}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                entityMode === "players" ? "bg-accent text-white font-bold" : "text-gray-400"
-              }`}
-            >
-              Individual Players
-            </button>
-            <button
-              onClick={() => setEntityMode("teams")}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                entityMode === "teams" ? "bg-accent text-white font-bold" : "text-gray-400"
-              }`}
-            >
-              All 30 Franchises
-            </button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Sub-mode toggles */}
+          {(activeTab === "clutch" || activeTab === "hustle") && (
+            <div className="flex bg-surface rounded-xl p-0.5 border border-borderDark text-xs font-mono">
+              <button
+                onClick={() => setEntityMode("players")}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  entityMode === "players" ? "bg-accent text-white font-bold" : "text-gray-400"
+                }`}
+              >
+                Individual Players
+              </button>
+              <button
+                onClick={() => setEntityMode("teams")}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  entityMode === "teams" ? "bg-accent text-white font-bold" : "text-gray-400"
+                }`}
+              >
+                All 30 Franchises
+              </button>
+            </div>
+          )}
 
-        {activeTab === "draft" && (
-          <div className="flex bg-surface rounded-xl p-0.5 border border-borderDark text-xs font-mono">
-            <button
-              onClick={() => setDraftMode("vope")}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                draftMode === "vope" ? "bg-accent text-white font-bold" : "text-gray-400"
-              }`}
-            >
-              Draft Value Over Pick (VOPE)
-            </button>
-            <button
-              onClick={() => setDraftMode("combine")}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                draftMode === "combine" ? "bg-accent text-white font-bold" : "text-gray-400"
-              }`}
-            >
-              Combine Anthropometrics ({combineAthletes.length})
-            </button>
-          </div>
-        )}
+          {activeTab === "draft" && (
+            <div className="flex bg-surface rounded-xl p-0.5 border border-borderDark text-xs font-mono">
+              <button
+                onClick={() => setDraftMode("vope")}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  draftMode === "vope" ? "bg-accent text-white font-bold" : "text-gray-400"
+                }`}
+              >
+                Draft Value Over Pick (VOPE)
+              </button>
+              <button
+                onClick={() => setDraftMode("combine")}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  draftMode === "combine" ? "bg-accent text-white font-bold" : "text-gray-400"
+                }`}
+              >
+                Combine Anthropometrics ({combineAthletes.length})
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={exportCsv}
+            className="px-3 py-1.5 rounded-xl bg-surface hover:bg-accent/20 text-accent border border-accent/40 text-xs font-mono font-bold transition"
+          >
+            ⬇ Export CSV
+          </button>
+        </div>
       </div>
 
       {/* TAB 1: CLUTCH TIME */}
@@ -388,7 +498,7 @@ export default function ScoutingAndClutchPage() {
                 ⏱️ Official NBA Clutch Time Leaderboard (Last 5 Min, Score Margin &le; 5 Pts)
               </h2>
               <p className="text-xs font-mono text-gray-400">
-                Click any column header to sort &middot; Showing{" "}
+                Click any column header to sort &middot; Hover any player for instant Dossier / Shot Map / Compare links &middot; Showing{" "}
                 {entityMode === "players" ? filteredClutchPlayers.length : clutchTeams.length}{" "}
                 {entityMode}
               </p>
@@ -457,11 +567,11 @@ export default function ScoutingAndClutchPage() {
                   {filteredClutchPlayers.slice(0, 150).map((p, i) => (
                     <tr key={p.player_id} className="hover:bg-surface/60 transition">
                       <td className="py-2.5 px-3 text-gray-500">{i + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-white font-sans">{p.player_name}</td>
                       <td className="py-2.5 px-3">
-                        <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold">
-                          {p.team_abbreviation}
-                        </span>
+                        <PlayerCell name={p.player_name} />
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <TeamBadge abbr={p.team_abbreviation} />
                       </td>
                       <td className="py-2.5 px-3 text-right text-gray-300">{p.gp}</td>
                       <td className="py-2.5 px-3 text-right text-gray-200">
@@ -513,11 +623,9 @@ export default function ScoutingAndClutchPage() {
                   {clutchTeams.map((t, i) => (
                     <tr key={t.team_id} className="hover:bg-surface/60 transition">
                       <td className="py-2.5 px-4 text-gray-500">{i + 1}</td>
-                      <td className="py-2.5 px-4 font-bold text-white font-sans">
-                        <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-mono mr-2">
-                          {t.team_abbreviation}
-                        </span>
-                        {t.team_name}
+                      <td className="py-2.5 px-4 font-bold text-white font-sans flex items-center gap-2">
+                        <TeamBadge abbr={t.team_abbreviation} />
+                        <span>{t.team_name}</span>
                       </td>
                       <td className="py-2.5 px-3 text-right text-gray-300">{t.gp}</td>
                       <td className="py-2.5 px-3 text-right font-bold text-white">
@@ -627,11 +735,11 @@ export default function ScoutingAndClutchPage() {
                   {filteredHustlePlayers.slice(0, 150).map((p, i) => (
                     <tr key={p.player_id} className="hover:bg-surface/60 transition">
                       <td className="py-2.5 px-3 text-gray-500">{i + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-white font-sans">{p.player_name}</td>
                       <td className="py-2.5 px-3">
-                        <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold">
-                          {p.team_abbreviation}
-                        </span>
+                        <PlayerCell name={p.player_name} />
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <TeamBadge abbr={p.team_abbreviation} />
                       </td>
                       <td className="py-2.5 px-3 text-right text-gray-400">{p.gp}</td>
                       <td className="py-2.5 px-3 text-right font-extrabold text-cyan-300">
@@ -674,11 +782,9 @@ export default function ScoutingAndClutchPage() {
                   {hustleTeams.map((t, i) => (
                     <tr key={t.team_id} className="hover:bg-surface/60 transition">
                       <td className="py-2.5 px-4 text-gray-500">{i + 1}</td>
-                      <td className="py-2.5 px-4 font-bold text-white font-sans">
-                        <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-mono mr-2">
-                          {t.team_abbreviation}
-                        </span>
-                        {t.team_name}
+                      <td className="py-2.5 px-4 font-bold text-white font-sans flex items-center gap-2">
+                        <TeamBadge abbr={t.team_abbreviation} />
+                        <span>{t.team_name}</span>
                       </td>
                       <td className="py-2.5 px-3 text-right font-extrabold text-cyan-300">
                         {t.deflections}
@@ -766,11 +872,11 @@ export default function ScoutingAndClutchPage() {
                   return (
                     <tr key={d.player_id} className="hover:bg-surface/60 transition">
                       <td className="py-2.5 px-3 text-gray-500">{i + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-white font-sans">{d.player_name}</td>
                       <td className="py-2.5 px-3">
-                        <span className="px-2 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold mr-1.5">
-                          {d.team_abbreviation}
-                        </span>
+                        <PlayerCell name={d.player_name} />
+                      </td>
+                      <td className="py-2.5 px-3 flex items-center gap-1.5">
+                        <TeamBadge abbr={d.team_abbreviation} />
                         <span className="text-gray-400">{d.position}</span>
                       </td>
                       <td className="py-2.5 px-3 text-right text-gray-400">{d.gp}</td>
@@ -877,11 +983,11 @@ export default function ScoutingAndClutchPage() {
                         <span className="font-bold text-white">{d.draft_year}</span>{" "}
                         <span className="text-accent font-extrabold">#{d.overall_pick}</span>
                       </td>
-                      <td className="py-2.5 px-3 font-bold text-white font-sans">{d.player_name}</td>
-                      <td className="py-2.5 px-3 text-gray-300">
-                        <span className="px-1.5 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold mr-1.5">
-                          {d.team}
-                        </span>
+                      <td className="py-2.5 px-3">
+                        <PlayerCell name={d.player_name} />
+                      </td>
+                      <td className="py-2.5 px-3 text-gray-300 flex items-center gap-1.5">
+                        <TeamBadge abbr={d.team} />
                         <span className="text-gray-400 text-[11px]">{d.organization}</span>
                       </td>
                       <td className="py-2.5 px-3 text-right text-gray-300">{d.gp}</td>
@@ -961,7 +1067,9 @@ export default function ScoutingAndClutchPage() {
                   {filteredCombine.map((c, i) => (
                     <tr key={`${c.player_id}-${i}`} className="hover:bg-surface/60 transition">
                       <td className="py-2.5 px-3 text-gray-500">{i + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-white font-sans">{c.player_name}</td>
+                      <td className="py-2.5 px-3">
+                        <PlayerCell name={c.player_name} />
+                      </td>
                       <td className="py-2.5 px-3 text-accent font-bold">{c.position}</td>
                       <td className="py-2.5 px-3 text-right text-gray-200">{c.height_ft_in || "-"}</td>
                       <td className="py-2.5 px-3 text-right font-extrabold text-cyan-300">

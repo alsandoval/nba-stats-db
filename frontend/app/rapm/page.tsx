@@ -5,8 +5,21 @@ import Link from "next/link";
 import { VirtualTable, PercentileBadge } from "@/components/virtual-table";
 import { DataService, RAPMPlayer, Player, SEASONS_10YR } from "@/lib/data-service";
 
+const ARCHETYPE_COLORS: Record<string, string> = {
+  "Primary Ballhandler": "#38bdf8",
+  "Shot Creator": "#f59e0b",
+  "Movement Shooter": "#10b981",
+  "Off-Ball Finisher": "#a855f7",
+  "Post Scorer": "#f43f5e",
+  "Stretch Big": "#2dd4bf",
+  "Roll & Cut Big": "#fb923c",
+  "Connector / Wing": "#60a5fa",
+};
+
 export default function RAPMPage() {
   const [season, setSeason] = useState<string>("2023-24");
+  const [viewMode, setViewMode] = useState<"table" | "galaxy">("table");
+  const [galaxyAxes, setGalaxyAxes] = useState<"rapm" | "tsne">("rapm");
   const [players, setPlayers] = useState<RAPMPlayer[]>([]);
   const [allPlayersData, setAllPlayersData] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +30,7 @@ export default function RAPMPage() {
   const [minPoss, setMinPoss] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [careerHistory, setCareerHistory] = useState<Player[]>([]);
+  const [hoveredDot, setHoveredDot] = useState<Player | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -27,6 +41,23 @@ export default function RAPMPage() {
       setPlayers(rapmData);
       setAllPlayersData(fullData);
       setLoading(false);
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const qParam = params.get("q");
+        const pParam = params.get("player");
+        if (qParam) {
+          setSearch(qParam);
+          const match = fullData.find((p) =>
+            p.full_name.toLowerCase().includes(qParam.toLowerCase())
+          );
+          if (match) setSelectedPlayer(match);
+        } else if (pParam) {
+          const pid = Number(pParam);
+          const match = fullData.find((p) => p.player_id === pid);
+          if (match) setSelectedPlayer(match);
+        }
+      }
     });
   }, [lambdaReg, season]);
 
@@ -65,6 +96,13 @@ export default function RAPMPage() {
           (p.offensive_archetype || "").toLowerCase().includes(search.toLowerCase())
       );
   }, [players, minPoss, teamFilter, archetypeFilter, search]);
+
+  const filteredFullPlayers = useMemo(() => {
+    const idSet = new Set(filtered.map((f) => `${f.player_id}-${f.season || season}`));
+    return allPlayersData
+      .filter((p) => idSet.has(`${p.player_id}-${p.season || season}`))
+      .slice(0, 350);
+  }, [allPlayersData, filtered, season]);
 
   const handleRowClick = (row: RAPMPlayer) => {
     const fullProfile = allPlayersData.find(
@@ -117,16 +155,17 @@ export default function RAPMPage() {
       key: "rank",
       header: "#",
       width: "52px",
+      flex: 0,
+      sortable: false,
       align: "center" as const,
-      render: (_: any, row: RAPMPlayer) => {
-        const idx = filtered.indexOf(row) + 1;
-        return <span className="font-mono text-xs text-gray-500 font-bold">{idx}</span>;
-      },
+      render: (val: number) => (
+        <span className="font-mono text-xs text-gray-500 font-bold">{val}</span>
+      ),
     },
     {
       key: "season",
       header: "Season",
-      width: "80px",
+      width: "85px",
       align: "center" as const,
       render: (val: string) => (
         <span className="font-mono text-[11px] text-gray-400">{val || season}</span>
@@ -136,15 +175,13 @@ export default function RAPMPage() {
       key: "player_name",
       header: "Player",
       width: "215px",
+      flex: 1.7,
       render: (val: string, row: RAPMPlayer) => (
-        <div
-          className="flex items-center gap-2 cursor-pointer group"
-          onClick={() => handleRowClick(row)}
-        >
+        <div className="flex items-center gap-2 group">
           <span className="font-bold text-white group-hover:text-accent transition truncate">
             {val}
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-borderDark text-accent">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-borderDark text-accent font-bold">
             {row.team_abbreviation}
           </span>
         </div>
@@ -154,8 +191,9 @@ export default function RAPMPage() {
       key: "offensive_archetype",
       header: "Offensive Archetype",
       width: "165px",
+      flex: 1.3,
       render: (val: string) => (
-        <span className="text-[11px] font-mono text-cyan-300 bg-cyan-950/30 border border-cyan-800/40 px-2 py-0.5 rounded truncate inline-block max-w-[155px]">
+        <span className="text-[11px] font-mono text-cyan-300 bg-cyan-950/30 border border-cyan-800/40 px-2 py-0.5 rounded truncate inline-block max-w-[165px]">
           {val || "All-Around"}
         </span>
       ),
@@ -198,7 +236,7 @@ export default function RAPMPage() {
     {
       key: "rapm",
       header: "Total RAPM",
-      width: "100px",
+      width: "105px",
       align: "right" as const,
       render: (val: number) => (
         <span
@@ -213,7 +251,7 @@ export default function RAPMPage() {
     {
       key: "wins_added",
       header: "Wins Added",
-      width: "95px",
+      width: "100px",
       align: "right" as const,
       render: (val: number) => {
         const w = typeof val === "number" ? val : 0;
@@ -227,7 +265,7 @@ export default function RAPMPage() {
     {
       key: "rapm_percentile",
       header: "Impact %ile",
-      width: "105px",
+      width: "120px",
       align: "center" as const,
       isPercentile: true,
     },
@@ -236,20 +274,41 @@ export default function RAPMPage() {
   return (
     <div className="space-y-6">
       {/* Title & Diagnostic Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>📈</span> 10-Season RAPM, LEBRON &amp; Player Impact Hub
+            <span>📈</span> 10-Season RAPM, LEBRON &amp; 3D Cluster Impact Hub
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
-            All 5,393 NBA Player-Seasons (2015-16 to 2024-25) with Ridge RAPM, Box LEBRON, Wins Added, Biometrics &amp; 10-Yr Career Arcs.
+            All 5,393 NBA Player-Seasons (2015-16 to 2024-25) with Sortable Virtual Grid, ORAPM&times;DRAPM Galaxy &amp; 10-Yr Career Arcs.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
-          <div className="bg-surfaceCard px-3 py-1.5 rounded-lg border border-borderDark text-gray-300">
-            Loaded Pool: <strong className="text-accent">{players.length.toLocaleString()} Player-Seasons</strong>
+        <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+          {/* View Mode Toggle: Table vs Galaxy Scatter */}
+          <div className="flex bg-surfaceCard rounded-xl p-0.5 border border-borderDark">
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                viewMode === "table"
+                  ? "bg-accent text-white shadow-glow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              📊 Virtual Grid ({filtered.length.toLocaleString()})
+            </button>
+            <button
+              onClick={() => setViewMode("galaxy")}
+              className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                viewMode === "galaxy"
+                  ? "bg-accent text-white shadow-glow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              🌌 Impact &amp; t-SNE Galaxy
+            </button>
           </div>
+
           <select
             value={season}
             onChange={(e) => setSeason(e.target.value)}
@@ -262,6 +321,7 @@ export default function RAPMPage() {
             ))}
             <option value="ALL">ALL 10 Seasons (2015-16 to 2024-25 • 5,393 Rows)</option>
           </select>
+
           <button
             onClick={exportRAPMCSV}
             className="px-3.5 py-1.5 rounded-xl bg-surfaceCard hover:bg-surface border border-borderDark text-gray-300 hover:text-white font-bold transition"
@@ -364,27 +424,162 @@ export default function RAPMPage() {
             Showing <strong className="text-white">{filtered.length.toLocaleString()}</strong> players in{" "}
             <strong className="text-accent">{season === "ALL" ? "2015-16 to 2024-25" : season}</strong>
           </span>
-          <span className="text-gray-500">
-            Click any player row to inspect 10-Yr Career Trajectory, Biometrics, Hustle/Defense &amp; Percentiles
+          <span className="text-gray-400">
+            💡 Click any column header to sort &middot; Click any player row or galaxy node to open 10-Yr Dossier
           </span>
         </div>
       </div>
 
-      {/* TanStack Virtualized Table */}
-      <div className="bg-surfaceCard border border-borderDark rounded-2xl p-4 shadow-xl">
-        {loading ? (
-          <div className="py-24 text-center font-mono text-sm text-gray-400 animate-pulse">
-            Solving sparse normal equations (X^T W X + &lambda; I)^(-1)...
+      {/* Main Content Area: Virtualized Sortable Table OR Interactive Galaxy Scatter */}
+      {viewMode === "table" ? (
+        <div className="bg-surfaceCard border border-borderDark rounded-2xl p-4 shadow-xl">
+          {loading ? (
+            <div className="py-24 text-center font-mono text-sm text-gray-400 animate-pulse">
+              Solving sparse normal equations (X^T W X + &lambda; I)^(-1)...
+            </div>
+          ) : (
+            <VirtualTable
+              data={filtered}
+              columns={columns}
+              height="600px"
+              rowHeight={46}
+              onRowClick={handleRowClick}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <span>🌌</span>{" "}
+                {galaxyAxes === "rapm"
+                  ? "Two-Way Player Impact Quadrant Map (ORAPM vs DRAPM)"
+                  : "3D t-SNE Position & Archetype Manifold Projection (t-SNE X vs Y)"}
+              </h3>
+              <p className="text-xs font-mono text-gray-400">
+                Node size scales with Wins Added &middot; Colored by Offensive Archetype &middot; Click any player node for full dossier
+              </p>
+            </div>
+            <div className="flex bg-surface rounded-xl p-0.5 border border-borderDark text-xs font-mono">
+              <button
+                onClick={() => setGalaxyAxes("rapm")}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  galaxyAxes === "rapm" ? "bg-accent text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                ORAPM &times; DRAPM Quadrants
+              </button>
+              <button
+                onClick={() => setGalaxyAxes("tsne")}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  galaxyAxes === "tsne" ? "bg-accent text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                t-SNE Manifold Clusters
+              </button>
+            </div>
           </div>
-        ) : (
-          <VirtualTable data={filtered} columns={columns} height="600px" rowHeight={44} />
-        )}
-      </div>
+
+          <div className="relative w-full h-[500px] bg-surface rounded-2xl border border-borderDark overflow-hidden">
+            {galaxyAxes === "rapm" && (
+              <>
+                <div className="absolute top-3 right-4 text-[10px] font-mono uppercase font-extrabold text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded border border-emerald-500/30">
+                  🏆 Two-Way Superstars (+ORAPM, +DRAPM)
+                </div>
+                <div className="absolute top-3 left-4 text-[10px] font-mono uppercase font-bold text-cyan-400 bg-cyan-950/40 px-2.5 py-1 rounded border border-cyan-500/30">
+                  🛡️ Defensive Stoppers (-ORAPM, +DRAPM)
+                </div>
+                <div className="absolute bottom-3 right-4 text-[10px] font-mono uppercase font-bold text-amber-400 bg-amber-950/40 px-2.5 py-1 rounded border border-amber-500/30">
+                  🔥 Offensive Specialists (+ORAPM, -DRAPM)
+                </div>
+                <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-gray-700/60 pointer-events-none" />
+                <div className="absolute inset-y-0 left-1/2 border-l border-dashed border-gray-700/60 pointer-events-none" />
+              </>
+            )}
+
+            <svg viewBox="0 0 800 500" className="w-full h-full select-none">
+              {filteredFullPlayers.map((p) => {
+                let cx = 400;
+                let cy = 250;
+                if (galaxyAxes === "rapm") {
+                  cx = Math.max(30, Math.min(770, 400 + (p.orapm / 6.0) * 340));
+                  cy = Math.max(30, Math.min(470, 250 - (p.drapm / 5.0) * 200));
+                } else {
+                  const tx = p.tsne_x ?? (p.orapm * 12);
+                  const ty = p.tsne_y ?? (p.drapm * 12);
+                  cx = Math.max(35, Math.min(765, 400 + (tx / 45.0) * 330));
+                  cy = Math.max(35, Math.min(465, 250 - (ty / 45.0) * 200));
+                }
+                const col = ARCHETYPE_COLORS[p.offensive_archetype || ""] || "#38bdf8";
+                const rad = Math.max(4.5, Math.min(11, 4.5 + Math.max(0, p.wins_added || 0) * 0.45));
+                const isTopStar = p.rapm >= 3.2 || (p.wins_added || 0) >= 8.5;
+
+                return (
+                  <g
+                    key={`${p.player_id}-${p.season}`}
+                    onClick={() => setSelectedPlayer(p)}
+                    onMouseEnter={() => setHoveredDot(p)}
+                    onMouseLeave={() => setHoveredDot(null)}
+                    className="cursor-pointer group"
+                  >
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={rad}
+                      fill={col}
+                      fillOpacity={0.82}
+                      stroke="#ffffff"
+                      strokeWidth={isTopStar ? "1.4" : "0.5"}
+                    />
+                    {isTopStar && (
+                      <text
+                        x={cx}
+                        y={cy - rad - 3}
+                        textAnchor="middle"
+                        fill="#f8fafc"
+                        fontSize="9.5"
+                        fontWeight="700"
+                        className="font-mono pointer-events-none"
+                      >
+                        {p.full_name.split(" ").pop()}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Hover Tooltip */}
+            {hoveredDot && (
+              <div className="absolute bottom-3 left-4 bg-surfaceCard/95 backdrop-blur-md border border-accent/50 rounded-xl px-3.5 py-2 text-xs font-mono text-white shadow-2xl pointer-events-none flex items-center gap-3">
+                <span className="px-2 py-0.5 rounded bg-accent/20 text-accent font-bold">
+                  {hoveredDot.team_abbreviation}
+                </span>
+                <span className="font-bold font-sans">{hoveredDot.full_name}</span>
+                <span className="text-gray-400">{hoveredDot.offensive_archetype}</span>
+                <span className="text-emerald-400 font-bold">
+                  RAPM: {hoveredDot.rapm >= 0 ? `+${hoveredDot.rapm}` : hoveredDot.rapm}
+                </span>
+                <span className="text-amber-300 font-bold">
+                  +{hoveredDot.wins_added ?? 0} Wins
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Slide-over Player Dossier & 10-Season Career Modal */}
       {selectedPlayer && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surfaceCard border border-borderDark rounded-2xl max-w-3xl w-full p-6 shadow-2xl relative space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setSelectedPlayer(null)}
+        >
+          <div
+            className="bg-surfaceCard border border-borderDark rounded-2xl max-w-3xl w-full p-6 shadow-2xl relative space-y-5 my-8 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setSelectedPlayer(null)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-surface hover:bg-surfaceCard border border-borderDark flex items-center justify-center text-gray-400 hover:text-white transition"
@@ -421,13 +616,13 @@ export default function RAPMPage() {
 
               <div className="flex items-center gap-2 font-mono text-xs pr-8">
                 <Link
-                  href="/shots"
+                  href={`/shots?player=${selectedPlayer.player_id}`}
                   className="px-3 py-1.5 rounded-xl bg-surface hover:bg-surfaceCard border border-borderDark text-cyan-300 font-bold transition"
                 >
                   🎯 Shot Chart
                 </Link>
                 <Link
-                  href="/compare"
+                  href={`/compare?p1=${selectedPlayer.player_id}&s1=${selectedPlayer.season || season}`}
                   className="px-3 py-1.5 rounded-xl bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent font-bold transition"
                 >
                   ⚔️ Compare

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { CourtSVG } from "@/components/court-svg";
 import { DataService, ShotResult, ShotProfileEntity } from "@/lib/data-service";
 
@@ -9,6 +10,8 @@ export default function ShotsPage() {
   const allTeams = useMemo(() => DataService.getAllShotTeams(), []);
 
   const [activeTab, setActiveTab] = useState<"player" | "team" | "simulator">("player");
+  const [courtViewMode, setCourtViewMode] = useState<"both" | "zones" | "dots">("both");
+  const [shotFilter, setShotFilter] = useState<"all" | "made" | "missed" | "3pt">("all");
   const [teamFilter, setTeamFilter] = useState<string>("ALL");
   const [playerSearch, setPlayerSearch] = useState<string>("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<number>(
@@ -17,6 +20,29 @@ export default function ShotsPage() {
   const [selectedTeamAbbr, setSelectedTeamAbbr] = useState<string>(allTeams[0]?.abbr || "BOS");
   const [profile, setProfile] = useState<ShotProfileEntity | null>(null);
   const [clickedShot, setClickedShot] = useState<ShotResult | null>(null);
+
+  // Deep-link URL query parameter support (?player=203999 or ?team=BOS)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const pParam = params.get("player");
+    const tParam = params.get("team");
+    if (pParam) {
+      const pid = Number(pParam);
+      if (allPlayers.some((p) => p.id === pid)) {
+        setActiveTab("player");
+        setTeamFilter("ALL");
+        setPlayerSearch("");
+        setSelectedPlayerId(pid);
+      }
+    } else if (tParam) {
+      const abbr = tParam.toUpperCase();
+      if (allTeams.some((t) => t.abbr.toUpperCase() === abbr)) {
+        setActiveTab("team");
+        setSelectedTeamAbbr(abbr);
+      }
+    }
+  }, [allPlayers, allTeams]);
 
   const uniqueTeams = useMemo(
     () => Array.from(new Set(allPlayers.map((p) => p.team).filter(Boolean))).sort(),
@@ -56,13 +82,21 @@ export default function ShotsPage() {
   const summary = profile?.summary;
   const zones = profile?.zones || {};
 
+  const displayedShots = useMemo(() => {
+    const raw = profile?.shots || [];
+    if (shotFilter === "made") return raw.filter((s) => s.made === 1);
+    if (shotFilter === "missed") return raw.filter((s) => s.made === 0);
+    if (shotFilter === "3pt") return raw.filter((s) => s.is_3pt === 1);
+    return raw;
+  }, [profile, shotFilter]);
+
   return (
     <div className="space-y-6">
       {/* Title & Diagnostic Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>🎯</span> Spatial Shot Quality, Zone Splits &amp; SMOE Atlas
+            <span>🎯</span> Spatial Shot Quality, 6-Zone Heatmap &amp; SMOE Atlas
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-mono">
             Complete NBA Court Zone Tracking across All {allPlayers.length} Players &amp; All{" "}
@@ -77,7 +111,7 @@ export default function ShotsPage() {
               onClick={() => setActiveTab("player")}
               className={`px-3 py-1.5 rounded-lg transition ${
                 activeTab === "player"
-                  ? "bg-accent text-white font-bold"
+                  ? "bg-accent text-white font-bold shadow-glow"
                   : "text-gray-400 hover:text-white"
               }`}
             >
@@ -87,7 +121,7 @@ export default function ShotsPage() {
               onClick={() => setActiveTab("team")}
               className={`px-3 py-1.5 rounded-lg transition ${
                 activeTab === "team"
-                  ? "bg-accent text-white font-bold"
+                  ? "bg-accent text-white font-bold shadow-glow"
                   : "text-gray-400 hover:text-white"
               }`}
             >
@@ -97,7 +131,7 @@ export default function ShotsPage() {
               onClick={() => setActiveTab("simulator")}
               className={`px-3 py-1.5 rounded-lg transition ${
                 activeTab === "simulator"
-                  ? "bg-accent text-white font-bold"
+                  ? "bg-accent text-white font-bold shadow-glow"
                   : "text-gray-400 hover:text-white"
               }`}
             >
@@ -190,26 +224,73 @@ export default function ShotsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Interactive Court SVG Visualizer */}
         <div className="lg:col-span-2 bg-surfaceCard border border-borderDark rounded-2xl p-6 shadow-xl flex flex-col items-center">
-          <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-4 text-xs font-mono text-gray-400">
+          <div className="w-full flex flex-wrap items-center justify-between gap-3 mb-4 text-xs font-mono text-gray-400">
             <span className="font-bold text-white">
               {activeTab === "simulator"
                 ? "Click anywhere on the court to simulate shot expectation"
                 : `${profile?.name} Spatial Shot Distribution (${summary?.shots_analyzed.toLocaleString()} Total FGA)`}
             </span>
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" /> Made FG
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400" /> Missed FG
-              </span>
-            </div>
+
+            {activeTab !== "simulator" && (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Court Layer Toggle */}
+                <div className="flex bg-surface rounded-lg p-0.5 border border-borderDark text-[11px]">
+                  {(
+                    [
+                      { id: "both", label: "💎 Heatmap + Dots" },
+                      { id: "zones", label: "🔥 Zone Heatmap" },
+                      { id: "dots", label: "🎯 Shot Dots" },
+                    ] as const
+                  ).map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setCourtViewMode(m.id)}
+                      className={`px-2 py-1 rounded transition ${
+                        courtViewMode === m.id
+                          ? "bg-accent text-white font-bold"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Shot Outcome Filter */}
+                {courtViewMode !== "zones" && (
+                  <div className="flex bg-surface rounded-lg p-0.5 border border-borderDark text-[11px]">
+                    {(
+                      [
+                        { id: "all", label: "All" },
+                        { id: "made", label: "Made" },
+                        { id: "missed", label: "Miss" },
+                        { id: "3pt", label: "3PT" },
+                      ] as const
+                    ).map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => setShotFilter(f.id)}
+                        className={`px-2 py-1 rounded transition ${
+                          shotFilter === f.id
+                            ? "bg-surfaceCard text-accent font-bold border border-accent/40"
+                            : "text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Court Component */}
-          <div className="w-full max-w-[620px] aspect-[50/47] rounded-xl overflow-hidden bg-surface border border-borderDark/60 shadow-inner p-2">
+          <div className="w-full max-w-[650px] aspect-[50/47] rounded-xl overflow-hidden bg-surface border border-borderDark/60 shadow-inner p-2">
             <CourtSVG
-              shots={activeTab !== "simulator" ? profile?.shots || [] : []}
+              shots={activeTab !== "simulator" ? displayedShots : []}
+              zones={activeTab !== "simulator" ? zones : undefined}
+              viewMode={activeTab !== "simulator" ? courtViewMode : "dots"}
               onCourtClick={handleCourtClick}
               clickedPoint={
                 clickedShot ? { x: clickedShot.shot_x, y: clickedShot.shot_y } : undefined
@@ -217,9 +298,19 @@ export default function ShotsPage() {
             />
           </div>
 
-          <p className="text-[11px] font-mono text-gray-500 mt-3 text-center">
-            Standard NBA Dimensions: 50ft width &middot; 47ft half-court length &middot; 23.75ft 3PT arc &middot; 22ft corners
-          </p>
+          <div className="w-full flex flex-wrap items-center justify-between gap-2 mt-3 text-[11px] font-mono text-gray-500">
+            <span>
+              Standard NBA Dimensions: 50ft width &middot; 47ft half-court &middot; 23.75ft 3PT arc &middot; 22ft corners
+            </span>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" /> Made / Hot Zone
+              </span>
+              <span className="flex items-center gap-1 text-red-400">
+                <span className="w-2 h-2 rounded-full bg-red-400" /> Missed / Cold Zone
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Analytics & Zone Splits Card */}
@@ -371,35 +462,66 @@ export default function ShotsPage() {
                       const z = zones[zName];
                       if (!z) return null;
                       const diff = (z.fg_pct - z.exp_pct) * 100;
+                      const fgaShare =
+                        summary?.total_fga && summary.total_fga > 0
+                          ? ((z.fga / summary.total_fga) * 100).toFixed(1)
+                          : "0.0";
                       return (
                         <div
                           key={zName}
-                          className="p-2 rounded-lg bg-surface border border-borderDark/70 flex items-center justify-between"
+                          className="p-2.5 rounded-xl bg-surface border border-borderDark/70 space-y-1.5"
                         >
-                          <div>
-                            <span className="text-gray-200 font-semibold block text-[11px]">
-                              {zName}
-                            </span>
-                            <span className="text-[10px] text-gray-500">
-                              {z.fgm} / {z.fga} FGA
-                            </span>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-gray-200 font-semibold block text-[11px]">
+                                {zName}
+                              </span>
+                              <span className="text-[10px] text-gray-500">
+                                {z.fgm} / {z.fga} FGA ({fgaShare}% freq)
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold text-white block">
+                                {(z.fg_pct * 100).toFixed(1)}%
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold ${
+                                  diff >= 0 ? "text-emerald-400" : "text-red-400"
+                                }`}
+                              >
+                                {diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`} vs Avg
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="font-bold text-white block">
-                              {(z.fg_pct * 100).toFixed(1)}%
-                            </span>
-                            <span
-                              className={`text-[10px] font-bold ${
-                                diff >= 0 ? "text-emerald-400" : "text-red-400"
+                          <div className="w-full h-1.5 bg-surfaceCard rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                diff >= 0 ? "bg-emerald-500" : "bg-red-500"
                               }`}
-                            >
-                              {diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`} vs Avg
-                            </span>
+                              style={{ width: `${Math.min(100, Number(fgaShare) * 1.8)}%` }}
+                            />
                           </div>
                         </div>
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {activeTab === "player" && selectedPlayerId && (
+                <div className="pt-2 border-t border-borderDark flex items-center gap-2 text-xs font-mono">
+                  <Link
+                    href={`/rapm?player=${selectedPlayerId}`}
+                    className="flex-1 py-2 text-center rounded-xl bg-surface hover:bg-surfaceElevated border border-borderDark text-gray-300 hover:text-white font-bold transition"
+                  >
+                    📈 RAPM Dossier
+                  </Link>
+                  <Link
+                    href={`/compare?p1=${selectedPlayerId}`}
+                    className="flex-1 py-2 text-center rounded-xl bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent font-bold transition"
+                  >
+                    ⚔️ Compare Player
+                  </Link>
                 </div>
               )}
             </div>

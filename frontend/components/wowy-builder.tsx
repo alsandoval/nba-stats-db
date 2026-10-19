@@ -43,6 +43,22 @@ export function WOWYBuilder() {
   useEffect(() => {
     DataService.getTeams("2023-24").then((tList) => {
       setTeams(tList);
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const tParam = params.get("team");
+        if (tParam) {
+          const found = tList.find(
+            (t) =>
+              String(t.team_id) === tParam ||
+              t.abbreviation.toUpperCase() === tParam.toUpperCase()
+          );
+          if (found) {
+            setSelectedTeam(found.team_id);
+            setLineupTeamFilter(found.abbreviation);
+            return;
+          }
+        }
+      }
       if (tList.length && !tList.some((t) => t.team_id === selectedTeam)) {
         setSelectedTeam(tList[0].team_id);
       }
