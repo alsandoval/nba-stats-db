@@ -75,6 +75,93 @@ CONFERENCES = {
     "NOP": ("Western", "Southwest"), "SAS": ("Western", "Southwest"),
 }
 
+MODERN_TEAMS_BY_ID = {
+    1610612737: ("ATL", "Atlanta Hawks", "Atlanta"),
+    1610612738: ("BOS", "Boston Celtics", "Boston"),
+    1610612739: ("CLE", "Cleveland Cavaliers", "Cleveland"),
+    1610612740: ("NOP", "New Orleans Pelicans", "New Orleans"),
+    1610612741: ("CHI", "Chicago Bulls", "Chicago"),
+    1610612742: ("DAL", "Dallas Mavericks", "Dallas"),
+    1610612743: ("DEN", "Denver Nuggets", "Denver"),
+    1610612744: ("GSW", "Golden State Warriors", "Golden State"),
+    1610612745: ("HOU", "Houston Rockets", "Houston"),
+    1610612746: ("LAC", "LA Clippers", "Los Angeles"),
+    1610612747: ("LAL", "Los Angeles Lakers", "Los Angeles"),
+    1610612748: ("MIA", "Miami Heat", "Miami"),
+    1610612749: ("MIL", "Milwaukee Bucks", "Milwaukee"),
+    1610612750: ("MIN", "Minnesota Timberwolves", "Minnesota"),
+    1610612751: ("BKN", "Brooklyn Nets", "Brooklyn"),
+    1610612752: ("NYK", "New York Knicks", "New York"),
+    1610612753: ("ORL", "Orlando Magic", "Orlando"),
+    1610612754: ("IND", "Indiana Pacers", "Indiana"),
+    1610612755: ("PHI", "Philadelphia 76ers", "Philadelphia"),
+    1610612756: ("PHX", "Phoenix Suns", "Phoenix"),
+    1610612757: ("POR", "Portland Trail Blazers", "Portland"),
+    1610612758: ("SAC", "Sacramento Kings", "Sacramento"),
+    1610612759: ("SAS", "San Antonio Spurs", "San Antonio"),
+    1610612760: ("OKC", "Oklahoma City Thunder", "Oklahoma City"),
+    1610612761: ("TOR", "Toronto Raptors", "Toronto"),
+    1610612762: ("UTA", "Utah Jazz", "Utah"),
+    1610612763: ("MEM", "Memphis Grizzlies", "Memphis"),
+    1610612764: ("WAS", "Washington Wizards", "Washington"),
+    1610612765: ("DET", "Detroit Pistons", "Detroit"),
+    1610612766: ("CHA", "Charlotte Hornets", "Charlotte"),
+}
+
+LEGACY_ABBR_MAP = {
+    "SEA": "OKC",
+    "MNL": "LAL",
+    "BUF": "LAC",
+    "SDC": "LAC",
+    "PHW": "GSW",
+    "SFW": "GSW",
+    "GOS": "GSW",
+    "SYR": "PHI",
+    "TCB": "ATL",
+    "STL": "ATL",
+    "MLH": "ATL",
+    "ROC": "SAC",
+    "CIN": "SAC",
+    "KCK": "SAC",
+    "CHP": "WAS",
+    "CHZ": "WAS",
+    "BAL": "WAS",
+    "CAP": "WAS",
+    "WSB": "WAS",
+    "NOJ": "UTA",
+    "UTH": "UTA",
+    "SDR": "HOU",
+    "VAN": "MEM",
+    "NYN": "BKN",
+    "NJN": "BKN",
+    "BRK": "BKN",
+    "NOH": "NOP",
+    "NOK": "NOP",
+    "FTW": "DET",
+    "CHH": "CHA",
+    "CHO": "CHA",
+    "SAN": "SAS",
+    "PHO": "PHX",
+}
+
+
+def normalize_abbr(abbr, team_id=None):
+    if team_id and int(team_id) in MODERN_TEAMS_BY_ID:
+        return MODERN_TEAMS_BY_ID[int(team_id)][0]
+    raw = str(abbr or "NBA").strip().upper()
+    return LEGACY_ABBR_MAP.get(raw, raw)
+
+
+def normalize_team_name(name, team_id=None, abbr=None):
+    if team_id and int(team_id) in MODERN_TEAMS_BY_ID:
+        return MODERN_TEAMS_BY_ID[int(team_id)][1]
+    norm_abbr = normalize_abbr(abbr)
+    for tid, (a, fname, _) in MODERN_TEAMS_BY_ID.items():
+        if a == norm_abbr:
+            return fname
+    return str(name or "Team")
+
+
 # League average zone FG% baselines for expected eFG% / SMOE calculation
 ZONE_EXPECTED_FG = {
     "ra": 0.655,
@@ -106,10 +193,23 @@ def export_all():
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # Map team_id -> abbreviation & full_name
+    # Repair historical team names in SQLite `teams` table so all 30 franchises reflect modern names
+    for tid, (m_abbr, m_name, m_city) in MODERN_TEAMS_BY_ID.items():
+        cur.execute(
+            "UPDATE teams SET abbreviation = ?, full_name = ?, city = ? WHERE team_id = ?",
+            (m_abbr, m_name, m_city, tid),
+        )
+    conn.commit()
+
+    # Map team_id -> modern abbreviation, full_name & city
     team_lookup = {}
     for r in cur.execute("SELECT team_id, abbreviation, full_name, city FROM teams").fetchall():
-        team_lookup[r["team_id"]] = dict(r)
+        tid = int(r["team_id"])
+        if tid in MODERN_TEAMS_BY_ID:
+            m_abbr, m_name, m_city = MODERN_TEAMS_BY_ID[tid]
+            team_lookup[tid] = {"team_id": tid, "abbreviation": m_abbr, "full_name": m_name, "city": m_city}
+        else:
+            team_lookup[tid] = dict(r)
 
     # =========================================================================
     # 0. PRE-FETCH BIOMETRICS, HUSTLE, CLUTCH & DEFENSE LOOKUPS
@@ -138,7 +238,7 @@ def export_all():
             "player_id": pid,
             "player_name": hr["PLAYER_NAME"] or "Player",
             "team_id": int(hr["TEAM_ID"] or 0),
-            "team_abbreviation": hr["TEAM_ABBREVIATION"] or "NBA",
+            "team_abbreviation": normalize_abbr(hr["TEAM_ABBREVIATION"], hr["TEAM_ID"]),
             "age": int(float(hr["AGE"] or 25)),
             "gp": gp,
             "min": round(float(hr["MIN"] or 0), 1),
@@ -162,10 +262,10 @@ def export_all():
     all_hustle_teams = []
     for htr in cur.execute("SELECT * FROM ep_leaguehustlestatsteam_hustlestatsteam ORDER BY DEFLECTIONS DESC").fetchall():
         tid = int(htr["TEAM_ID"] or 0)
-        tabbr = team_lookup.get(tid, {}).get("abbreviation", "NBA")
+        tabbr = normalize_abbr(team_lookup.get(tid, {}).get("abbreviation", "NBA"), tid)
         all_hustle_teams.append({
             "team_id": tid,
-            "team_name": htr["TEAM_NAME"] or "Team",
+            "team_name": normalize_team_name(htr["TEAM_NAME"], tid, tabbr),
             "team_abbreviation": tabbr,
             "contested_shots": int(htr["CONTESTED_SHOTS"] or 0),
             "contested_2pt": int(htr["CONTESTED_SHOTS_2PT"] or 0),
@@ -188,7 +288,7 @@ def export_all():
             "player_id": pid,
             "player_name": cr["PLAYER_NAME"] or "Player",
             "team_id": int(cr["TEAM_ID"] or 0),
-            "team_abbreviation": cr["TEAM_ABBREVIATION"] or "NBA",
+            "team_abbreviation": normalize_abbr(cr["TEAM_ABBREVIATION"], cr["TEAM_ID"]),
             "age": int(float(cr["AGE"] or 25)),
             "gp": gp,
             "w": int(cr["W"] or 0),
@@ -220,10 +320,10 @@ def export_all():
     all_clutch_teams = []
     for ctr in cur.execute("SELECT * FROM ep_leaguedashteamclutch_leaguedashteamclutch ORDER BY W_PCT DESC").fetchall():
         tid = int(ctr["TEAM_ID"] or 0)
-        tabbr = team_lookup.get(tid, {}).get("abbreviation", "NBA")
+        tabbr = normalize_abbr(team_lookup.get(tid, {}).get("abbreviation", "NBA"), tid)
         all_clutch_teams.append({
             "team_id": tid,
-            "team_name": ctr["TEAM_NAME"] or "Team",
+            "team_name": normalize_team_name(ctr["TEAM_NAME"], tid, tabbr),
             "team_abbreviation": tabbr,
             "gp": int(ctr["GP"] or 0),
             "w": int(ctr["W"] or 0),
@@ -245,7 +345,7 @@ def export_all():
         entry = {
             "player_id": pid,
             "player_name": dr["PLAYER_NAME"] or "Player",
-            "team_abbreviation": dr["PLAYER_LAST_TEAM_ABBREVIATION"] or "NBA",
+            "team_abbreviation": normalize_abbr(dr["PLAYER_LAST_TEAM_ABBREVIATION"]),
             "position": dr["PLAYER_POSITION"] or "F",
             "age": int(float(dr["AGE"] or 25)),
             "gp": gp,
@@ -301,16 +401,21 @@ def export_all():
     t_rows = cur.execute(teams_sql, SEASONS_10YR).fetchall()
     teams_by_season = {s: [] for s in SEASONS_10YR}
     for r in t_rows:
-        abbr = r["abbreviation"]
+        tid = int(r["team_id"])
+        abbr = normalize_abbr(r["abbreviation"], tid)
         conf, div = CONFERENCES.get(abbr, ("Eastern", "Atlantic"))
         t_data = dict(r)
+        if tid in MODERN_TEAMS_BY_ID:
+            t_data["abbreviation"] = MODERN_TEAMS_BY_ID[tid][0]
+            t_data["full_name"] = MODERN_TEAMS_BY_ID[tid][1]
+            t_data["city"] = MODERN_TEAMS_BY_ID[tid][2]
         t_data["conference"] = conf
         t_data["division"] = div
         season_key = r["season"]
         if season_key in teams_by_season:
             teams_by_season[season_key].append(t_data)
 
-    default_teams_23_24 = teams_by_season.get("2023-24", [])
+    default_teams_23_24 = teams_by_season.get("2024-25", []) or teams_by_season.get("2023-24", [])
 
     # =========================================================================
     # 2. ALL PLAYERS & RAPM / LEBRON / ARCHETYPES ACROSS 10 SEASONS (2015-16 TO 2024-25)
@@ -472,7 +577,7 @@ def export_all():
             "is_active": bool(r["is_active"]),
             "age": int(leb.get("age") or 26),
             "team_id": r["team_id"],
-            "team_abbreviation": r["team_abbreviation"] or "NBA",
+            "team_abbreviation": normalize_abbr(r["team_abbreviation"], r["team_id"]),
             "gp": gp,
             "min_per_game": min_pg,
             "pts": pts,
@@ -588,11 +693,11 @@ def export_all():
     # =========================================================================
     print("[*] Exporting all 450 player contracts, 1,219 contract years, and 30-team cap sheets...")
     tax_calc = TaxCalculator()
-    settings = tax_calc.DEFAULT_CAP_SETTINGS.get("2023-24", tax_calc.DEFAULT_CAP_SETTINGS["2023-24"])
+    settings = tax_calc.DEFAULT_CAP_SETTINGS.get("2024-25", tax_calc.DEFAULT_CAP_SETTINGS["2023-24"])
 
     # Player RAPM & Wins Added lookup for Trade Machine On-Court Impact
     latest_player_impact = {}
-    for s_key in ["2023-24", "2024-25", "2022-23"]:
+    for s_key in ["2024-25", "2023-24", "2022-23"]:
         for p in players_by_season.get(s_key, []):
             pid = p["player_id"]
             if pid not in latest_player_impact:
@@ -656,8 +761,8 @@ def export_all():
         y.cap_hit,
         y2.cap_hit as next_season_cap_hit
     FROM player_contracts c
-    LEFT JOIN contract_years y ON c.contract_id = y.contract_id AND y.season = '2023-24'
-    LEFT JOIN contract_years y2 ON c.contract_id = y2.contract_id AND y2.season = '2024-25'
+    LEFT JOIN contract_years y ON c.contract_id = y.contract_id AND y.season = '2024-25'
+    LEFT JOIN contract_years y2 ON c.contract_id = y2.contract_id AND y2.season = '2023-24'
     WHERE c.is_active = 1
     ORDER BY COALESCE(y.cap_hit, y2.cap_hit, 0) DESC
     """
@@ -666,6 +771,7 @@ def export_all():
     for cr in contract_rows:
         tid = cr["team_id"]
         c_dict = dict(cr)
+        c_dict["team_abbreviation"] = normalize_abbr(cr["team_abbreviation"], tid)
         c_dict["current_salary"] = c_dict["current_salary"] or c_dict["next_season_cap_hit"] or 2_000_000
         c_dict["cap_hit"] = c_dict["cap_hit"] or c_dict["next_season_cap_hit"] or c_dict["current_salary"]
         c_dict["schedule"] = contract_years_map.get(cr["contract_id"], [])
@@ -680,7 +786,7 @@ def export_all():
     for t in default_teams_23_24:
         tid = t["team_id"]
         contracts = team_contracts.get(tid, [])
-        cs_row = cap_sheet_lookup.get((tid, "2023-24")) or cap_sheet_lookup.get((tid, "2024-25"))
+        cs_row = cap_sheet_lookup.get((tid, "2024-25")) or cap_sheet_lookup.get((tid, "2023-24"))
         payroll = sum(c["cap_hit"] or c["current_salary"] or 0 for c in contracts)
         if cs_row and cs_row.get("total_cap_allocations"):
             payroll = float(cs_row["total_cap_allocations"])
@@ -695,7 +801,7 @@ def export_all():
             "team_id": tid,
             "team_name": t["full_name"],
             "team_abbreviation": t["abbreviation"],
-            "season": "2023-24",
+            "season": "2024-25",
             "total_taxable_payroll": round(payroll, 2),
             "salary_cap": settings["salary_cap"],
             "luxury_tax_threshold": settings["tax_level"],
@@ -740,7 +846,8 @@ def export_all():
             l_dict["archetype_mix"] = {}
         l_dict["player_id_list"] = [int(x) for x in str(lr["player_ids"] or "").split(",") if x.strip().isdigit()]
         l_dict["player_name_list"] = [x.strip() for x in str(lr["player_names"] or "").split(",") if x.strip()]
-        abbr = lr["team_abbreviation"]
+        abbr = normalize_abbr(lr["team_abbreviation"])
+        l_dict["team_abbreviation"] = abbr
         lineup_evals_by_team.setdefault(abbr, []).append(l_dict)
         all_lineup_evals.append(l_dict)
 
@@ -754,11 +861,12 @@ def export_all():
         gid = vlr["GROUP_ID"]
         dl = dash_lineups_lookup.get(gid, {})
         pids = [int(x) for x in str(gid or "").split("-") if x.strip().isdigit()]
+        tid = int(vlr["TEAM_ID"] or 0)
         real_nba_lineups.append({
             "group_id": gid,
             "group_name": vlr["GROUP_NAME"] or "",
-            "team_id": int(vlr["TEAM_ID"] or 0),
-            "team_abbreviation": vlr["TEAM_ABBREVIATION"] or "NBA",
+            "team_id": tid,
+            "team_abbreviation": normalize_abbr(vlr["TEAM_ABBREVIATION"], tid),
             "gp": int(dl.get("GP") or 0),
             "w": int(dl.get("W") or 0),
             "l": int(dl.get("L") or 0),
@@ -792,7 +900,7 @@ def export_all():
         roster = []
         for r in r_rows:
             pid = r["player_id"]
-            bit_idx = indexer.get_bit_index(tid, "2023-24", pid)
+            bit_idx = indexer.get_bit_index(tid, "2024-25", pid)
             roster.append({
                 "player_id": pid,
                 "full_name": r["full_name"],
@@ -830,7 +938,7 @@ def export_all():
             continue
         pname = sr["______PLAYER_NAME__"] or "Player"
         tid = int(sr["______TEAM_ID__"] or 0)
-        tabbr = sr["______TEAM_ABBREVIATION__"] or "NBA"
+        tabbr = normalize_abbr(sr["______TEAM_ABBREVIATION__"], tid)
 
         ra_fgm = int(float(sr["__Restricted_Area____FGM__"] or 0))
         ra_fga = int(float(sr["__Restricted_Area____FGA__"] or 0))
@@ -914,8 +1022,8 @@ def export_all():
     all_team_zone_profiles = {}
     for tr in team_shot_rows:
         tid = int(tr["______TEAM_ID__"] or 0)
-        tname = tr["______TEAM_NAME__"] or "Team"
-        tabbr = team_lookup.get(tid, {}).get("abbreviation", "NBA")
+        tabbr = normalize_abbr(team_lookup.get(tid, {}).get("abbreviation", "NBA"), tid)
+        tname = normalize_team_name(tr["______TEAM_NAME__"], tid, tabbr)
 
         ra_fgm = int(float(tr["__Restricted_Area____FGM__"] or 0))
         ra_fga = int(float(tr["__Restricted_Area____FGA__"] or 0))
@@ -931,7 +1039,7 @@ def export_all():
 
         lc3_fgm = int(float(tr["__Left_Corner_3____FGM__"] or 0))
         lc3_fga = int(float(tr["__Left_Corner_3____FGA__"] or 0))
-        lc3_pct = round(float(tr["__Left_Corner_3____FG_PCT__"] or 0), 3)
+        lc3_pct = round(float(sr["__Left_Corner_3____FG_PCT__"] if False else tr["__Left_Corner_3____FG_PCT__"] or 0), 3)
 
         rc3_fgm = int(float(tr["__Right_Corner_3____FGM__"] or 0))
         rc3_fga = int(float(tr["__Right_Corner_3____FGA__"] or 0))
@@ -1001,11 +1109,11 @@ def export_all():
     g_rows = cur.execute(games_sql, valid_season_ids).fetchall()
     games_10yr = []
     for gr in g_rows:
-        h_abbr = team_lookup.get(gr["home_team_id"], {}).get("abbreviation", "HOM")
-        a_abbr = team_lookup.get(gr["visitor_team_id"], {}).get("abbreviation", "AWY")
+        h_abbr = normalize_abbr(team_lookup.get(gr["home_team_id"], {}).get("abbreviation", "HOM"), gr["home_team_id"])
+        a_abbr = normalize_abbr(team_lookup.get(gr["visitor_team_id"], {}).get("abbreviation", "AWY"), gr["visitor_team_id"])
         h_pts = int(gr["home_team_pts"] or 0)
         a_pts = int(gr["visitor_team_pts"] or 0)
-        season_label = SEASON_ID_TO_STR.get(str(gr["season_id"]), "2023-24")
+        season_label = SEASON_ID_TO_STR.get(str(gr["season_id"]), "2024-25")
         games_10yr.append({
             "id": gr["game_id"],
             "season": season_label,
@@ -1086,7 +1194,7 @@ def export_all():
             "draft_year": str(dhr["SEASON"] or ""),
             "round": int(dhr["ROUND_NUMBER"] or 1),
             "overall_pick": pick,
-            "team": dhr["TEAM_ABBREVIATION"] or "NBA",
+            "team": normalize_abbr(dhr["TEAM_ABBREVIATION"]),
             "organization": dhr["ORGANIZATION"] or "",
             "gp": gp,
             "career_ppg": career_ppg,
@@ -1176,19 +1284,19 @@ def export_all():
     # =========================================================================
     shared_files = {
         "teams.json": {
-            "season": "2023-24",
+            "season": "2024-25",
             "seasons": SEASONS_10YR,
             "total": len(default_teams_23_24),
             "teams": default_teams_23_24,
             "by_season": teams_by_season,
         },
         "cba_aprons.json": {
-            "season": "2023-24",
+            "season": "2024-25",
             "total_contracts": len(contract_rows),
             "teams": cba_teams,
         },
         "wowy_lineups.json": {
-            "season": "2023-24",
+            "season": "2024-25",
             "total_evaluated_lineups": len(all_lineup_evals),
             "total_real_nba_lineups": len(real_nba_lineups),
             "teams": wowy_data,
@@ -1196,7 +1304,7 @@ def export_all():
             "real_nba_lineups": real_nba_lineups,
         },
         "shot_profiles.json": {
-            "season": "2023-24",
+            "season": "2024-25",
             "total_players": len(all_player_zone_profiles),
             "total_teams": len(all_team_zone_profiles),
             "profiles": all_player_zone_profiles,
@@ -1217,17 +1325,17 @@ def export_all():
             json.dump(data, f, separators=(",", ":"))
 
     full_players_payload = {
-        "season": "2023-24",
+        "season": "2024-25",
         "seasons": SEASONS_10YR,
         "total": len(all_10yr_players),
-        "players": players_by_season.get("2023-24", []),
+        "players": players_by_season.get("2024-25", []),
         "by_season": players_by_season,
     }
     full_rapm_payload = {
-        "season": "2023-24",
+        "season": "2024-25",
         "seasons": SEASONS_10YR,
         "total": len(all_10yr_players),
-        "players": rapm_by_season.get("2023-24", []),
+        "players": rapm_by_season.get("2024-25", []),
         "by_season": rapm_by_season,
     }
 

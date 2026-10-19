@@ -33,8 +33,8 @@ export function NavHeader() {
 
   useEffect(() => {
     checkBackendStatus().then(setIsLive);
-    DataService.getPlayers("2023-24").then(setPlayers);
-    DataService.getTeams("2023-24").then(setTeams);
+    DataService.getPlayers("2024-25").then(setPlayers);
+    DataService.getTeams("2024-25").then(setTeams);
   }, []);
 
   const matchingScenes = useMemo(() => {

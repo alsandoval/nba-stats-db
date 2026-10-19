@@ -17,7 +17,7 @@ const ARCHETYPE_COLORS: Record<string, string> = {
 };
 
 export default function RAPMPage() {
-  const [season, setSeason] = useState<string>("2023-24");
+  const [season, setSeason] = useState<string>("2024-25");
   const [viewMode, setViewMode] = useState<"table" | "galaxy">("table");
   const [galaxyAxes, setGalaxyAxes] = useState<"rapm" | "tsne">("rapm");
   const [players, setPlayers] = useState<RAPMPlayer[]>([]);

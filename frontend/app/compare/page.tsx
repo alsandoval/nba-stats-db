@@ -5,21 +5,21 @@ import { DataService, Player, SEASONS_10YR } from "@/lib/data-service";
 import { PercentileBadge } from "@/components/virtual-table";
 
 const PRESETS = [
-  { name: "'24 Jokic vs '24 Luka", seasonA: "2023-24", idA: 203999, seasonB: "2023-24", idB: 1629029 },
-  { name: "'16 Curry vs '24 Jokic", seasonA: "2015-16", idA: 201939, seasonB: "2023-24", idB: 203999 },
-  { name: "'16 LeBron vs '24 Tatum", seasonA: "2015-16", idA: 2544, seasonB: "2023-24", idB: 1628369 },
-  { name: "'24 Giannis vs '24 SGA", seasonA: "2023-24", idA: 203507, seasonB: "2023-24", idB: 1628983 },
+  { name: "'25 SGA vs '25 Jokic", seasonA: "2024-25", idA: 1628983, seasonB: "2024-25", idB: 203999 },
+  { name: "'25 Jokic vs '25 Luka", seasonA: "2024-25", idA: 203999, seasonB: "2024-25", idB: 1629029 },
+  { name: "'25 Giannis vs '25 Tatum", seasonA: "2024-25", idA: 203507, seasonB: "2024-25", idB: 1628369 },
+  { name: "'16 Curry vs '25 Jokic", seasonA: "2015-16", idA: 201939, seasonB: "2024-25", idB: 203999 },
 ];
 
 export default function ComparePage() {
-  const [seasonA, setSeasonA] = useState<string>("2023-24");
-  const [seasonB, setSeasonB] = useState<string>("2023-24");
+  const [seasonA, setSeasonA] = useState<string>("2024-25");
+  const [seasonB, setSeasonB] = useState<string>("2024-25");
   const [playersA, setPlayersA] = useState<Player[]>([]);
   const [playersB, setPlayersB] = useState<Player[]>([]);
   const [searchA, setSearchA] = useState<string>("");
   const [searchB, setSearchB] = useState<string>("");
-  const [playerAId, setPlayerAId] = useState<number>(203999); // Jokic
-  const [playerBId, setPlayerBId] = useState<number>(1629029); // Luka
+  const [playerAId, setPlayerAId] = useState<number>(1628983); // SGA
+  const [playerBId, setPlayerBId] = useState<number>(203999); // Jokic
   const [careerA, setCareerA] = useState<Player[]>([]);
   const [careerB, setCareerB] = useState<Player[]>([]);
 

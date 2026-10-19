@@ -41,7 +41,7 @@ export function WOWYBuilder() {
   const [lineupSearch, setLineupSearch] = useState<string>("");
 
   useEffect(() => {
-    DataService.getTeams("2023-24").then((tList) => {
+    DataService.getTeams("2024-25").then((tList) => {
       setTeams(tList);
       if (typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);

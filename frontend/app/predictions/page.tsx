@@ -12,12 +12,12 @@ import {
 import { resolveMatchupTeamColors } from "@/components/differential-candlestick-chart";
 
 export default function PredictionsPage() {
-  const [homeSeason, setHomeSeason] = useState<string>("2023-24");
-  const [awaySeason, setAwaySeason] = useState<string>("2023-24");
+  const [homeSeason, setHomeSeason] = useState<string>("2024-25");
+  const [awaySeason, setAwaySeason] = useState<string>("2024-25");
   const [homeTeams, setHomeTeams] = useState<Team[]>([]);
   const [awayTeams, setAwayTeams] = useState<Team[]>([]);
-  const [homeTeamId, setHomeTeamId] = useState<number>(1610612738); // BOS
-  const [awayTeamId, setAwayTeamId] = useState<number>(1610612743); // DEN
+  const [homeTeamId, setHomeTeamId] = useState<number>(1610612760); // OKC
+  const [awayTeamId, setAwayTeamId] = useState<number>(1610612739); // CLE
 
   // Live Simulator state
   const [scoreMargin, setScoreMargin] = useState<number>(4);
